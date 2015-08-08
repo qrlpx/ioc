@@ -121,7 +121,10 @@ impl<Obj: Any + ?Sized> Entry<Obj> {
 
 // ++++++++++++++++++++ Register ++++++++++++++++++++ 
 
-pub struct Register<Obj: Any + ?Sized> {
+pub trait DefaultBase: Any {}
+impl<T: DefaultBase + ?Sized> DefaultBase for Box<T> {}
+
+pub struct Register<Obj: Any + ?Sized = DefaultBase> {
     entrys: BTreeMap<String, Entry<Obj>>,
 }
 
@@ -176,7 +179,7 @@ impl<Obj: Any + ?Sized> Register<Obj> {
 }
 
 #[derive(Clone)]
-pub struct Iter<'a, Obj: Any + ?Sized> {
+pub struct Iter<'a, Obj: Any + ?Sized = DefaultBase> {
     entrys: btree_map::Iter<'a, String, Entry<Obj>>,
 }
 
@@ -193,7 +196,7 @@ impl<'a, Obj: Any + ?Sized> Iterator for Iter<'a, Obj> {
     }
 }
 
-pub struct IterMut<'a, Obj: Any + ?Sized> {
+pub struct IterMut<'a, Obj: Any + ?Sized = DefaultBase> {
     entrys: btree_map::IterMut<'a, String, Entry<Obj>>,
 }
 
@@ -245,7 +248,7 @@ unsafe impl<'a, Str, Obj: ?Sized> MultiIndexable<&'a Str> for Register<Obj>
 
 // ++++++++++++++++++++ RegisterModifier ++++++++++++++++++++ 
 
-pub struct RegisterModifier<Obj: Any + ?Sized>(Register<Obj>);
+pub struct RegisterModifier<Obj: Any + ?Sized = DefaultBase>(Register<Obj>);
 
 impl<Obj: Any + ?Sized> Deref for RegisterModifier<Obj> {
     type Target = Register<Obj>;
