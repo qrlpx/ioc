@@ -1,7 +1,7 @@
 
 /* vvv SHOULD LOOK LIKE THIS vvv
 
-qregister_wire_fns!{
+qregister_load_fns!{
 
     fn load_stores |cfg: &Cfg| => {
         
@@ -26,12 +26,12 @@ qregister_wire_fns!{
     }
 }
 
-pub fn load_module(register: &mut Register<MyBase>, cfg: &Cfg){
+pub fn load_module(register: &mut RegisterModifier<MyBase>, cfg: &Cfg){
     
     load_stores(register, cfg);
     load_services(register);
     
-    register.wire_alternative("Physics", "LegacyPhysics");
+    register.wire_alternative("Physics", Some("LegacyPhysics"));
 }
 
 */
