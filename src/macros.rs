@@ -113,7 +113,7 @@ macro_rules! qregister_load_fns {
     // 1.1 expansion
     ($col:ident <- single $ty:ty { name: $name:expr, init: $init:expr } $($ff:tt)*) => {
         {
-            impl super::OptionReflect for $ty {
+            impl ::qregister::OptionReflect for $ty {
                 fn option_name() -> &'static str { $name }
             }
         
@@ -158,7 +158,7 @@ macro_rules! qregister_load_fns {
     // 1.2 expansion
     ($col:ident <- option $ty:ty { name: $name:expr } $($ff:tt)*) => {
         {
-            impl super::OptionReflect for $ty {
+            impl ::qregister::OptionReflect for $ty {
                 fn option_name() -> &'static str { $name }
             }
 
@@ -179,7 +179,7 @@ macro_rules! qregister_load_fns {
             // utility to ensure that `t` is of type `T` (useful for compile-errors)
             fn _echo<T>(t: T) -> T { t }
 
-            $col.alternatives.push((<$opt as super::OptionReflect>::option_name(), 
+            $col.alternatives.push((<$opt as ::qregister::OptionReflect>::option_name(), 
                                     {$name}.to_string(), 
                                     box _echo::<Box<$opt>>($init)));
 
@@ -261,6 +261,7 @@ macro_rules! qregister_load_fns {
     };
 }
 
+/*
 use std::any::Any;
 pub trait Base: Any + 'static {}
 impl<B: ?Sized + Base> Base for Box<B> {}
@@ -293,14 +294,14 @@ impl Base for Arb {}
 impl SecondBase for Arb {}
 
 qregister_load_fns!{
-    fn test(&mut super::RegisterModifier<Base>, lel: i8) => {
+    fn test(&mut ::qregister::RegisterModifier<Base>, lel: i8) => {
         single Foo{ init: {lel + 2; Foo } }
 
         option SecondBase;
 
         alternative(SecondBase) Bar;
     }
-    fn test_two(&mut super::RegisterModifier<SecondBase>) => {
+    fn test_two(&mut ::qregister::RegisterModifier<SecondBase>) => {
         single Arb;
     }
-}
+}*/
