@@ -36,7 +36,7 @@ Fields:
 * `$opt`: the option the alternative will be added to
 * `$name`: the name of the alternative
 * `$init`: the `obj`-value that will be passed to `RegisterModifier::add_alternative`, defaults to
-* `box <$ty as Default>::default() as Box<$opt>`
+  `box <$ty as Default>::default() as Box<$opt>`
 
 ## `single`-statment
 
