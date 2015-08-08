@@ -126,6 +126,8 @@ impl<Obj: Any + ?Sized> Entry<Obj> {
 
 pub trait DefaultBase: Any {}
 impl<T: Any + ?Sized> DefaultBase for T {}
+qdowncastable!(DefaultBase);
+qdowncast_methods!(DefaultBase);
 
 pub struct Register<Obj: Any + ?Sized = DefaultBase> {
     entrys: BTreeMap<String, Entry<Obj>>,
