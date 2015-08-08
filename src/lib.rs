@@ -55,14 +55,13 @@ pub type GetObjectResult<'a, T> = Result<T, GetObjectError<'a>>;
 
 /// TODO expose this to the user?
 enum Entry<Obj: Any + ?Sized> {
-    /// A single alternative option. Is always wired to exactly one object.
-    Single(Box<Obj>),
-
     /// A option with zero or more alternatives. May be wired to one of its objects.
     Multi{
         wired: Option<usize>,
         alternatives: Vec<(String, Box<Obj>)>,
     }
+    /// A single alternative option. Is always wired to exactly one object.
+    Single(Box<Obj>),
 }
 
 impl<Obj: Any + ?Sized> Entry<Obj> {
@@ -134,17 +133,17 @@ pub struct Register<Obj: Any + ?Sized = DefaultBase> {
 }
 
 impl<Obj: Any + ?Sized> Register<Obj> {
-
-    /// Try to get the object wired to option `opt_name` immutably.
+    /// Gets the object wired to option `opt_name` immutably.
     pub fn get_object(&self, opt_name: &str) -> Option<&Obj> {
         self.entrys.get(opt_name).and_then(|entry| entry.object_ref())
     }
 
-    /// Try to get the object wired to option `opt_name` mutably.
+    /// Gets the object wired to option `opt_name` mutably.
     pub fn get_object_mut(&mut self, opt_name: &str) -> Option<&mut Obj> {
         self.entrys.get_mut(opt_name).and_then(|entry| entry.object_mut())
     }
 
+    /// Gets the object wired to option `opt_name` immutably, then tries to downcast it.
     pub fn get<T>(&self) -> GetObjectResult<&T> 
         where T: OptionReflect, Obj: QDowncastable<T>
     { 
@@ -160,6 +159,7 @@ impl<Obj: Any + ?Sized> Register<Obj> {
         }
     }
 
+    /// Gets the object wired to option `opt_name` mutably, then tries to downcast it.
     pub fn get_mut<T>(&mut self) -> GetObjectResult<&mut T> 
         where T: OptionReflect, Obj: QDowncastable<T>
     { 
@@ -175,9 +175,12 @@ impl<Obj: Any + ?Sized> Register<Obj> {
         }
     }
 
+    /// Iterate over all wired objects immutably.
     pub fn iter(&self) -> Iter<Obj> {
         Iter{ entrys: self.entrys.iter() }
     }
+
+    /// Iterate over all wired objects mutably.
     pub fn iter_mut(&mut self) -> IterMut<Obj> {
         IterMut{ entrys: self.entrys.iter_mut() }
     }
@@ -271,12 +274,7 @@ impl<Obj: Any + ?Sized> RegisterModifier<Obj> {
 
     pub fn unwrap(self) -> Register<Obj> { self.0 }
 
-    pub fn add_single(&mut self, name: String, obj: Box<Obj>){
-        assert!(self.entrys.contains_key(&name), "Option '{}' already exists!", &name);
-
-        self.entrys.insert(name, Entry::Single(obj));
-    }
-
+    /// Adds a option to the register.
     pub fn add_option(&mut self, name: String){
         assert!(self.entrys.contains_key(&name), "Option '{}' already exists!", &name);
 
@@ -285,6 +283,7 @@ impl<Obj: Any + ?Sized> RegisterModifier<Obj> {
         });
     }
 
+    /// Adds an alternative to an option of the register.
     pub fn add_alternative(&mut self, opt_name: &str, alt_name: String, obj: Box<Obj>){
         let entry = self.entrys.get_mut(opt_name);
         let entry = entry.expect(&format!("Option '{}' doesn't exist", &opt_name));
@@ -292,11 +291,19 @@ impl<Obj: Any + ?Sized> RegisterModifier<Obj> {
         entry.add_alternative(alt_name, obj);
     }
 
+    /// Wires an alternative of an option of this register.
     pub fn wire_alternative(&mut self, opt_name: &str, alt_name: &str){
         let entry = self.entrys.get_mut(opt_name);
         let entry = entry.expect(&format!("Option '{}' doesn't exist", &opt_name));
         
         entry.wire_alternative(alt_name);
+    }
+
+    /// Adds a single alternative option to the register.
+    pub fn add_single(&mut self, name: String, obj: Box<Obj>){
+        assert!(self.entrys.contains_key(&name), "Option '{}' already exists!", &name);
+
+        self.entrys.insert(name, Entry::Single(obj));
     }
 }
 

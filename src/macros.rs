@@ -1,26 +1,5 @@
 /** Utility macro for implementing `OptionReflect` and generating loading functions.
 
-## `single`-statment
-
-Statement for single alternative options.
-
-Possible forms:
-
-```rust
-single $ty { name: $name, init: $init }
-single $ty { init: $init, name: $name }
-single $ty { init: $init }
-single $ty { name: $name }
-single $ty;
-```
-
-Fields:
-
-* `$ty`: the type `OptionReflect` will be implemented for
-* `$name`: the `&'static str` that will be returned by `OptionReflect`, defaults to `stringify!($ty)`
-* `$init`: the `obj`-value that will be passed to `RegisterModifier::add_single`, defaults to
-* `<$ty as Default>::default()`
-
 ## `option`-statment
 
 Statement for regular options.
@@ -58,6 +37,27 @@ Fields:
 * `$name`: the name of the alternative
 * `$init`: the `obj`-value that will be passed to `RegisterModifier::add_alternative`, defaults to
 * `box <$ty as Default>::default() as Box<$opt>`
+
+## `single`-statment
+
+Statement for single alternative options.
+
+Possible forms:
+
+```rust
+single $ty { name: $name, init: $init }
+single $ty { init: $init, name: $name }
+single $ty { init: $init }
+single $ty { name: $name }
+single $ty;
+```
+
+Fields:
+
+* `$ty`: the type `OptionReflect` will be implemented for
+* `$name`: the `&'static str` that will be returned by `OptionReflect`, defaults to `stringify!($ty)`
+* `$init`: the `obj`-value that will be passed to `RegisterModifier::add_single`, defaults to
+* `<$ty as Default>::default()`
 
 # Example 
 
