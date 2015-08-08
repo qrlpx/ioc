@@ -3,7 +3,7 @@
 
 qregister_wire_fns!{
 
-    fn load_stores(self, cfg: &Cfg) => {
+    fn load_stores |cfg: &Cfg| => {
         
         single PositionStore;
         
@@ -13,7 +13,7 @@ qregister_wire_fns!{
         
     }
 
-    fn load_services(self) => {
+    fn load_services => {
 
         single Timing;
 
@@ -30,6 +30,8 @@ pub fn load_module(register: &mut Register<MyBase>, cfg: &Cfg){
     
     load_stores(register, cfg);
     load_services(register);
+    
+    register.wire_alternative("Physics", "LegacyPhysics");
 }
 
 */
