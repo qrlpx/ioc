@@ -6,12 +6,15 @@ keywords = ["ioc", "di", "inversion of control", "dependency injection"]
 description = "A simple IoC (Inversion of Control) container"
 
 repository = "https://github.com/qrlpx/qregister"
+documentation = "https://qrlpx.github.io/qregister/qregister"
 
 license = "CC0-1.0"
 
 [dependencies.qdowncast]
 git = "https://github.com/qrlpx/qdowncast.git"
+version = "*.1.*"
 
 [dependencies.qindex_multi]
 git = "https://github.com/qrlpx/qindex_multi.git"
+version = "*.1.*"
 
