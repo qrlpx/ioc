@@ -1,6 +1,9 @@
-//! TODO
+//! ### TODO
 //!
-//! * clarify terminology (Wiring, Option, Object).
+//! * Clarify terminology (to wire, to load, option, alternative, option).
+//! * Single alternative options are a _special case_ of options/alternatives. 
+//!   To avoid confusion, all code & doc related to single alternative options 
+//!   should be listed after regular options/alternatives.
 
 #![feature(get_type_id)]
 #![feature(box_syntax)]
@@ -122,7 +125,7 @@ impl<Obj: Any + ?Sized> Entry<Obj> {
 // ++++++++++++++++++++ Register ++++++++++++++++++++ 
 
 pub trait DefaultBase: Any {}
-impl<T: DefaultBase + ?Sized> DefaultBase for Box<T> {}
+impl<T: Any + ?Sized> DefaultBase for T {}
 
 pub struct Register<Obj: Any + ?Sized = DefaultBase> {
     entrys: BTreeMap<String, Entry<Obj>>,
