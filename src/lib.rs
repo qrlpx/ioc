@@ -61,7 +61,7 @@ enum Entry<Obj: Any + ?Sized> {
     Multi{
         wired: Option<usize>,
         alternatives: Vec<(String, Box<Obj>)>,
-    }
+    },
     /// A single alternative option. Is always wired to exactly one object.
     Single(Box<Obj>),
 }
