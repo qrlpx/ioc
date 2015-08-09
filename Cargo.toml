@@ -10,11 +10,7 @@ documentation = "https://qrlpx.github.io/qregister/qregister"
 
 license = "CC0-1.0"
 
-[dependencies.qdowncast]
-git = "https://github.com/qrlpx/qdowncast.git"
-version = "*.1.*"
-
-[dependencies.qindex_multi]
-git = "https://github.com/qrlpx/qindex_multi.git"
-version = "*.1.*"
+[dependencies]
+qdowncast = "^0.1.0"
+qindex_multi = "^0.1.2"
 
