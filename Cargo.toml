@@ -12,5 +12,5 @@ license = "CC0-1.0"
 
 [dependencies]
 qdowncast = "^0.1.0"
-qindex_multi = "^0.1.2"
+qindex_multi = "^0.3.0"
 

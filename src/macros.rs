@@ -123,7 +123,7 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.1 variation: $init and $name permutated
+    // 1.1 variant: $init and $name permutated
     ($col:ident <- single $ty:ty { init: $init:expr, name: $name:expr } $($ff:tt)*) => {
         qregister_load_fns!{
             $col <- single $ty { name: $name, init: $init } 
@@ -131,7 +131,7 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.1 variation: $name omitted, default to type-name
+    // 1.1 variant: $name omitted, default to type-name
     ($col:ident <- single $ty:ty { init: $init:expr } $($ff:tt)*) => {
         qregister_load_fns!{
             $col <- single $ty { name: stringify!($ty), init: $init }
@@ -139,7 +139,7 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.1 variation: $init ommited, default to default-ctor
+    // 1.1 variant: $init ommited, default to default-ctor
     ($col:ident <- single $ty:ty { name: $name:expr } $($ff:tt)*) => {
         qregister_load_fns!{
             $col <- single $ty { name: $name, init: <$ty as Default>::default() }
@@ -147,7 +147,7 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.1 variation: $name and $init ommitted, default type-name and default-ctor
+    // 1.1 variant: $name and $init ommitted, default type-name and default-ctor
     ($col:ident <- single $ty:ty; $($ff:tt)*) => {
         qregister_load_fns!{
             $col <- single $ty { name: stringify!($ty) }
@@ -168,7 +168,7 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.2 variation: $name omitted, default to type-name
+    // 1.2 variant: $name omitted, default to type-name
     ($col:ident <- option $ty:ty; $($ff:tt)*) => {
         qregister_load_fns!($col <- option $ty { name: stringify!($ty) });
     };
@@ -187,7 +187,7 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.3 variation: $init and $name permutated
+    // 1.3 variant: $init and $name permutated
     ($col:ident <- alternative($opt:ty) $ty:ty { init: $init:expr, name: $name:expr } $($ff:tt)*) => {
         qregister_load_fns!{
             $col <- alternative($opt) $ty { name: $name, init: $init } 
@@ -195,7 +195,7 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.3 variation: $name omitted, default to type-name
+    // 1.3 variant: $name omitted, default to type-name
     ($col:ident <- alternative($opt:ty) $ty:ty { init: $init:expr } $($ff:tt)*) => {
         qregister_load_fns!{
             $col <- alternative($opt) $ty { name: stringify!($ty), init: $init }
@@ -203,7 +203,7 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.3 variation: $init ommited, default to default-ctor
+    // 1.3 variant: $init ommited, default to default-ctor
     ($col:ident <- alternative($opt:ty) $ty:ty { name: $name:expr } $($ff:tt)*) => {
         qregister_load_fns!{
             $col <- alternative($opt) $ty { name: $name, init: box <$ty as Default>::default() as Box<$opt> } 
@@ -211,7 +211,7 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.3 variation: $name and $init ommitted, default to type-name and default-ctor
+    // 1.3 variant: $name and $init ommitted, default to type-name and default-ctor
     ($col:ident <- alternative($opt:ty) $ty:ty; $($ff:tt)*) => {
         qregister_load_fns!{
             $col <- alternative($opt) $ty { name: stringify!($ty) }
@@ -249,7 +249,7 @@ macro_rules! qregister_load_fns {
         qregister_load_fns!($($ff)*);
     };
 
-    // 2.1 variation: no `,` after $reg_type
+    // 2.1 variant: no `,` after $reg_type
     ($(#[$mmm:meta])* fn $name:ident($reg_type:ty) => { $($stmts:tt)+ } $($ff:tt)*) => {
         qregister_load_fns!{
             $(#[$mmm])*

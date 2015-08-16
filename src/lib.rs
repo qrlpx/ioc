@@ -102,7 +102,7 @@ impl<Obj: Any + ?Sized> Entry<Obj> {
         }
     }
 
-    fn object_ref(&self) -> Option<&Obj> {
+    fn object(&self) -> Option<&Obj> {
         match self {
             &Entry::Single(ref obj) => Some(&**obj),
             &Entry::Multi{ wired, ref alternatives } => match wired {
@@ -123,21 +123,22 @@ impl<Obj: Any + ?Sized> Entry<Obj> {
     }
 }
 
-// ++++++++++++++++++++ Register ++++++++++++++++++++ 
+// ++++++++++++++++++++ ObjectMap ++++++++++++++++++++ 
 
 pub trait DefaultBase: Any {}
 impl<T: Any + ?Sized> DefaultBase for T {}
 qdowncastable!(DefaultBase);
 qdowncast_methods!(DefaultBase);
 
-pub struct Register<Obj: Any + ?Sized = DefaultBase> {
+/// TODO naming? `ObjectMap`?
+pub struct ObjectMap<Obj: Any + ?Sized = DefaultBase> {
     entrys: BTreeMap<String, Entry<Obj>>,
 }
 
-impl<Obj: Any + ?Sized> Register<Obj> {
+impl<Obj: Any + ?Sized> ObjectMap<Obj> {
     /// Gets the object wired to option `opt_name` immutably.
     pub fn get_object(&self, opt_name: &str) -> Option<&Obj> {
-        self.entrys.get(opt_name).and_then(|entry| entry.object_ref())
+        self.entrys.get(opt_name).and_then(|entry| entry.object())
     }
 
     /// Gets the object wired to option `opt_name` mutably.
@@ -188,6 +189,7 @@ impl<Obj: Any + ?Sized> Register<Obj> {
     }
 }
 
+/// TODO impl more Iterator-traits?
 #[derive(Clone)]
 pub struct Iter<'a, Obj: Any + ?Sized = DefaultBase> {
     entrys: btree_map::Iter<'a, String, Entry<Obj>>,
@@ -197,7 +199,7 @@ impl<'a, Obj: Any + ?Sized> Iterator for Iter<'a, Obj> {
     type Item = (&'a str, &'a Obj);
     fn next(&mut self) -> Option<Self::Item> {
         match self.entrys.next() {
-            Some((opt_name, entry)) => match entry.object_ref() {
+            Some((opt_name, entry)) => match entry.object() {
                 Some(obj) => Some((&opt_name, obj)),
                 None => self.next(),
             },
@@ -206,6 +208,7 @@ impl<'a, Obj: Any + ?Sized> Iterator for Iter<'a, Obj> {
     }
 }
 
+/// TODO impl more Iterator-traits?
 pub struct IterMut<'a, Obj: Any + ?Sized = DefaultBase> {
     entrys: btree_map::IterMut<'a, String, Entry<Obj>>,
 }
@@ -223,19 +226,19 @@ impl<'a, Obj: Any + ?Sized> Iterator for IterMut<'a, Obj> {
     }
 }
 
-impl<'a, Obj: Any + ?Sized> IntoIterator for &'a Register<Obj> {
+impl<'a, Obj: Any + ?Sized> IntoIterator for &'a ObjectMap<Obj> {
     type Item = <Self::IntoIter as Iterator>::Item;
     type IntoIter = Iter<'a, Obj>;
     fn into_iter(self) -> Self::IntoIter { self.iter() }
 }
 
-impl<'a, Obj: Any + ?Sized> IntoIterator for &'a mut Register<Obj> {
+impl<'a, Obj: Any + ?Sized> IntoIterator for &'a mut ObjectMap<Obj> {
     type Item = <Self::IntoIter as Iterator>::Item;
     type IntoIter = IterMut<'a, Obj>;
     fn into_iter(self) -> Self::IntoIter { self.iter_mut() }
 }
 
-impl<'a, Str, Obj: ?Sized> Index<&'a Str> for Register<Obj> 
+impl<'a, Str, Obj: ?Sized> Index<&'a Str> for ObjectMap<Obj> 
     where Str: Ord + Borrow<str>, Obj: Any
 {
     type Output = Obj;
@@ -244,7 +247,7 @@ impl<'a, Str, Obj: ?Sized> Index<&'a Str> for Register<Obj>
     }
 }
 
-impl<'a, Str, Obj: ?Sized> IndexMut<&'a Str> for Register<Obj> 
+impl<'a, Str, Obj: ?Sized> IndexMut<&'a Str> for ObjectMap<Obj> 
     where Str: Ord + Borrow<str>, Obj: Any
 {
     fn index_mut(&mut self, name: &'a Str) -> &mut Self::Output { 
@@ -252,42 +255,37 @@ impl<'a, Str, Obj: ?Sized> IndexMut<&'a Str> for Register<Obj>
     }
 }
 
-unsafe impl<'a, Str, Obj: ?Sized> MultiIndexable<&'a Str> for Register<Obj> 
+unsafe impl<'a, Str, Obj: ?Sized> MultiIndexable<&'a Str> for ObjectMap<Obj> 
     where Str: Ord + Borrow<str>, Obj: Any
 {}
 
-// ++++++++++++++++++++ RegisterModifier ++++++++++++++++++++ 
+// ++++++++++++++++++++ Register ++++++++++++++++++++ 
 
-pub struct RegisterModifier<Obj: Any + ?Sized = DefaultBase>(Register<Obj>);
-
-impl<Obj: Any + ?Sized> Deref for RegisterModifier<Obj> {
-    type Target = Register<Obj>;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-impl<Obj: Any + ?Sized> DerefMut for RegisterModifier<Obj> {
-    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
-}
+/// TODO naming? `RegisterBuilder?` ObjectMap => `ObjectMap` & Register => `ObjectMap`?
+pub struct Register<Obj: Any + ?Sized = DefaultBase>(ObjectMap<Obj>);
 
 // TODO: remove duplicated code
-impl<Obj: Any + ?Sized> RegisterModifier<Obj> {
-    pub fn new() -> RegisterModifier<Obj> { 
-        RegisterModifier(Register{ entrys: BTreeMap::new() })
+impl<Obj: Any + ?Sized> Register<Obj> {
+    pub fn new() -> Register<Obj> { 
+        Register(ObjectMap{ entrys: BTreeMap::new() })
     }
 
-    pub fn unwrap(self) -> Register<Obj> { self.0 }
+    pub fn objects(&self) -> &ObjectMap<Obj> { &self.0 }
+    pub fn objects_mut(&mut self) -> &ObjectMap<Obj> { &mut self.0 }
+    pub fn into_objects(self) -> ObjectMap<Obj> { self.0 }
 
     /// Adds a option to the register.
     pub fn add_option(&mut self, name: String){
-        assert!(self.entrys.contains_key(&name), "Option '{}' already exists!", &name);
+        assert!(self.0.entrys.contains_key(&name), "Option '{}' already exists!", &name);
 
-        self.entrys.insert(name, Entry::Multi{
+        self.0.entrys.insert(name, Entry::Multi{
             wired: None, alternatives: Vec::new()
         });
     }
 
     /// Adds an alternative to an option of the register.
     pub fn add_alternative(&mut self, opt_name: &str, alt_name: String, obj: Box<Obj>){
-        let entry = self.entrys.get_mut(opt_name);
+        let entry = self.0.entrys.get_mut(opt_name);
         let entry = entry.expect(&format!("Option '{}' doesn't exist", &opt_name));
 
         entry.add_alternative(alt_name, obj);
@@ -295,7 +293,7 @@ impl<Obj: Any + ?Sized> RegisterModifier<Obj> {
 
     /// Wires an alternative of an option of this register.
     pub fn wire_alternative(&mut self, opt_name: &str, alt_name: &str){
-        let entry = self.entrys.get_mut(opt_name);
+        let entry = self.0.entrys.get_mut(opt_name);
         let entry = entry.expect(&format!("Option '{}' doesn't exist", &opt_name));
         
         entry.wire_alternative(alt_name);
@@ -303,9 +301,9 @@ impl<Obj: Any + ?Sized> RegisterModifier<Obj> {
 
     /// Adds a single alternative option to the register.
     pub fn add_single(&mut self, name: String, obj: Box<Obj>){
-        assert!(self.entrys.contains_key(&name), "Option '{}' already exists!", &name);
+        assert!(self.0.entrys.contains_key(&name), "Option '{}' already exists!", &name);
 
-        self.entrys.insert(name, Entry::Single(obj));
+        self.0.entrys.insert(name, Entry::Single(obj));
     }
 }
 
