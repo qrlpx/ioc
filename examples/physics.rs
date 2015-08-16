@@ -43,9 +43,9 @@ fn main(){
 
     reg.wire_alternative("Physics", "NPhysicsPhysics");
 
-    reg.objects_mut().get_mut::<Box<Physics>>().unwrap().progress(1.0);
+    reg.objects.get_mut::<Box<Physics>>().unwrap().progress(1.0);
 
     reg.wire_alternative("Physics", "LegacyPhysics");
 
-    reg.objects_mut().get_mut::<Box<Physics>>().unwrap().progress(1.0);
+    reg.objects.get_mut::<Box<Physics>>().unwrap().progress(1.0);
 }

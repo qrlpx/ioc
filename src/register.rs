@@ -36,11 +36,11 @@ impl<'a> GetObjectError<'a> {
 
 pub type GetObjectResult<'a, T> = Result<T, GetObjectError<'a>>;
 
-// ++++++++++++++++++++ Entry ++++++++++++++++++++ 
+// ++++++++++++++++++++ WiringOption ++++++++++++++++++++ 
 
 /// TODO expose this to the user?
-enum Entry<Obj: Any + ?Sized> {
-    /// A option with zero or more alternatives. May be wired to one of its objects.
+enum WiringOption<Obj: Any + ?Sized> {
+    /// An option with zero or more alternatives. May be wired to one of its objects.
     Multi{
         wired: Option<usize>,
         alternatives: Vec<(String, Box<Obj>)>,
@@ -49,10 +49,10 @@ enum Entry<Obj: Any + ?Sized> {
     Single(Box<Obj>),
 }
 
-impl<Obj: Any + ?Sized> Entry<Obj> {
+impl<Obj: Any + ?Sized> WiringOption<Obj> {
     fn has_alternative(&self, alt_name: &str) -> bool {
         match self {
-            &Entry::Multi{ ref alternatives, .. } => {
+            &WiringOption::Multi{ ref alternatives, .. } => {
                 alternatives.iter().any(|e| &*e.0 == alt_name)
             }
             _ => false,
@@ -64,11 +64,11 @@ impl<Obj: Any + ?Sized> Entry<Obj> {
                 "Alternative '{}' already exists,", alt_name);
 
         match self {
-            &mut Entry::Multi{ ref mut alternatives, .. } => {
+            &mut WiringOption::Multi{ ref mut alternatives, .. } => {
                 alternatives.push((alt_name, obj));
             }
             _ => { 
-                panic!("Can't add alternative '{}' to single alternative option", alt_name);
+                panic!("can't add alternative '{}' to single alternative option", alt_name);
             }
         }
     }
@@ -78,7 +78,7 @@ impl<Obj: Any + ?Sized> Entry<Obj> {
                 "Can't wire missing alternative '{}'", alt_name);
 
         match self {
-            &mut Entry::Multi{ ref mut wired, ref alternatives } => {
+            &mut WiringOption::Multi{ ref mut wired, ref alternatives } => {
                 *wired = Some(alternatives.iter().position(|e| &*e.0 == alt_name).unwrap());
             }
             _ => { unreachable!() }
@@ -87,8 +87,8 @@ impl<Obj: Any + ?Sized> Entry<Obj> {
 
     fn object(&self) -> Option<&Obj> {
         match self {
-            &Entry::Single(ref obj) => Some(&**obj),
-            &Entry::Multi{ wired, ref alternatives } => match wired {
+            &WiringOption::Single(ref obj) => Some(&**obj),
+            &WiringOption::Multi{ wired, ref alternatives } => match wired {
                 Some(idx) => Some(&*alternatives[idx].1), 
                 None => None,
             }
@@ -97,8 +97,8 @@ impl<Obj: Any + ?Sized> Entry<Obj> {
 
     fn object_mut(&mut self) -> Option<&mut Obj> {
         match self {
-            &mut Entry::Single(ref mut obj) => Some(&mut**obj),
-            &mut Entry::Multi{ wired, ref mut alternatives } => match wired {
+            &mut WiringOption::Single(ref mut obj) => Some(&mut**obj),
+            &mut WiringOption::Multi{ wired, ref mut alternatives } => match wired {
                 Some(idx) => Some(&mut*alternatives[idx].1), 
                 None => None,
             }
@@ -115,18 +115,18 @@ qdowncast_methods!(DefaultBase);
 
 /// TODO naming? `ObjectMap`?
 pub struct ObjectMap<Obj: Any + ?Sized = DefaultBase> {
-    entrys: BTreeMap<String, Entry<Obj>>,
+    options: BTreeMap<String, WiringOption<Obj>>,
 }
 
 impl<Obj: Any + ?Sized> ObjectMap<Obj> {
     /// Gets the object wired to option `opt_name` immutably.
     pub fn get_object(&self, opt_name: &str) -> Option<&Obj> {
-        self.entrys.get(opt_name).and_then(|entry| entry.object())
+        self.options.get(opt_name).and_then(|option| option.object())
     }
 
     /// Gets the object wired to option `opt_name` mutably.
     pub fn get_object_mut(&mut self, opt_name: &str) -> Option<&mut Obj> {
-        self.entrys.get_mut(opt_name).and_then(|entry| entry.object_mut())
+        self.options.get_mut(opt_name).and_then(|option| option.object_mut())
     }
 
     /// Gets the object wired to option `opt_name` immutably, then tries to downcast it.
@@ -163,26 +163,26 @@ impl<Obj: Any + ?Sized> ObjectMap<Obj> {
 
     /// Iterate over all wired objects immutably.
     pub fn iter(&self) -> Iter<Obj> {
-        Iter{ entrys: self.entrys.iter() }
+        Iter{ options: self.options.iter() }
     }
 
     /// Iterate over all wired objects mutably.
     pub fn iter_mut(&mut self) -> IterMut<Obj> {
-        IterMut{ entrys: self.entrys.iter_mut() }
+        IterMut{ options: self.options.iter_mut() }
     }
 }
 
 /// TODO impl more Iterator-traits?
 #[derive(Clone)]
 pub struct Iter<'a, Obj: Any + ?Sized = DefaultBase> {
-    entrys: btree_map::Iter<'a, String, Entry<Obj>>,
+    options: btree_map::Iter<'a, String, WiringOption<Obj>>,
 }
 
 impl<'a, Obj: Any + ?Sized> Iterator for Iter<'a, Obj> {
     type Item = (&'a str, &'a Obj);
     fn next(&mut self) -> Option<Self::Item> {
-        match self.entrys.next() {
-            Some((opt_name, entry)) => match entry.object() {
+        match self.options.next() {
+            Some((opt_name, option)) => match option.object() {
                 Some(obj) => Some((&opt_name, obj)),
                 None => self.next(),
             },
@@ -193,14 +193,14 @@ impl<'a, Obj: Any + ?Sized> Iterator for Iter<'a, Obj> {
 
 /// TODO impl more Iterator-traits?
 pub struct IterMut<'a, Obj: Any + ?Sized = DefaultBase> {
-    entrys: btree_map::IterMut<'a, String, Entry<Obj>>,
+    options: btree_map::IterMut<'a, String, WiringOption<Obj>>,
 }
 
 impl<'a, Obj: Any + ?Sized> Iterator for IterMut<'a, Obj> {
     type Item = (&'a str, &'a mut Obj);
     fn next(&mut self) -> Option<Self::Item> {
-        match self.entrys.next() {
-            Some((opt_name, entry)) => match entry.object_mut() {
+        match self.options.next() {
+            Some((opt_name, option)) => match option.object_mut() {
                 Some(obj) => Some((&opt_name, obj)),
                 None => self.next(),
             },
@@ -245,48 +245,48 @@ unsafe impl<'a, Str, Obj: ?Sized> MultiIndexable<&'a Str> for ObjectMap<Obj>
 // ++++++++++++++++++++ Register ++++++++++++++++++++ 
 
 /// TODO naming? `RegisterBuilder?` ObjectMap => `ObjectMap` & Register => `ObjectMap`?
-pub struct Register<Obj: Any + ?Sized = DefaultBase>(ObjectMap<Obj>);
+pub struct Register<Obj: Any + ?Sized = DefaultBase>{
+    pub objects: ObjectMap<Obj>
+}
 
 // TODO: remove duplicated code
 impl<Obj: Any + ?Sized> Register<Obj> {
     pub fn new() -> Register<Obj> { 
-        Register(ObjectMap{ entrys: BTreeMap::new() })
+        Register{
+            objects: ObjectMap{ options: BTreeMap::new() }
+        }
     }
-
-    pub fn objects(&self) -> &ObjectMap<Obj> { &self.0 }
-    pub fn objects_mut(&mut self) -> &mut ObjectMap<Obj> { &mut self.0 }
-    pub fn into_objects(self) -> ObjectMap<Obj> { self.0 }
 
     /// Adds a option to the register.
     pub fn add_option(&mut self, name: String){
-        assert!(!self.0.entrys.contains_key(&name), "Option '{}' already exists!", &name);
+        assert!(!self.objects.options.contains_key(&name), "option '{}' already exists!", &name);
 
-        self.0.entrys.insert(name, Entry::Multi{
+        self.objects.options.insert(name, WiringOption::Multi{
             wired: None, alternatives: Vec::new()
         });
     }
 
     /// Adds an alternative to an option of the register.
     pub fn add_alternative(&mut self, opt_name: &str, alt_name: String, obj: Box<Obj>){
-        let entry = self.0.entrys.get_mut(opt_name);
-        let entry = entry.expect(&format!("Option '{}' doesn't exist", &opt_name));
+        let option = self.objects.options.get_mut(opt_name);
+        let option = option.expect(&format!("option '{}' doesn't exist", &opt_name));
 
-        entry.add_alternative(alt_name, obj);
+        option.add_alternative(alt_name, obj);
     }
 
     /// Wires an alternative of an option of this register.
     pub fn wire_alternative(&mut self, opt_name: &str, alt_name: &str){
-        let entry = self.0.entrys.get_mut(opt_name);
-        let entry = entry.expect(&format!("Option '{}' doesn't exist", &opt_name));
+        let option = self.objects.options.get_mut(opt_name);
+        let option = option.expect(&format!("option '{}' doesn't exist", &opt_name));
         
-        entry.wire_alternative(alt_name);
+        option.wire_alternative(alt_name);
     }
 
     /// Adds a single alternative option to the register.
     pub fn add_single(&mut self, name: String, obj: Box<Obj>){
-        assert!(self.0.entrys.contains_key(&name), "Option '{}' already exists!", &name);
+        assert!(self.objects.options.contains_key(&name), "option '{}' already exists!", &name);
 
-        self.0.entrys.insert(name, Entry::Single(obj));
+        self.objects.options.insert(name, WiringOption::Single(obj));
     }
 }
 
