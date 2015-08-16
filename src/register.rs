@@ -254,12 +254,12 @@ impl<Obj: Any + ?Sized> Register<Obj> {
     }
 
     pub fn objects(&self) -> &ObjectMap<Obj> { &self.0 }
-    pub fn objects_mut(&mut self) -> &ObjectMap<Obj> { &mut self.0 }
+    pub fn objects_mut(&mut self) -> &mut ObjectMap<Obj> { &mut self.0 }
     pub fn into_objects(self) -> ObjectMap<Obj> { self.0 }
 
     /// Adds a option to the register.
     pub fn add_option(&mut self, name: String){
-        assert!(self.0.entrys.contains_key(&name), "Option '{}' already exists!", &name);
+        assert!(!self.0.entrys.contains_key(&name), "Option '{}' already exists!", &name);
 
         self.0.entrys.insert(name, Entry::Multi{
             wired: None, alternatives: Vec::new()
