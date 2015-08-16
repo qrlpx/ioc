@@ -26,10 +26,10 @@ impl Physics for LegacyPhysics {
 
 qregister_load_fns!{
     fn load_module(&mut Register) => {
-
-        alternative(Physics) NPhysicsPhysics;
     
         option Physics;
+
+        alternative(Physics) NPhysicsPhysics;
         
         alternative(Physics) LegacyPhysics;
     }
