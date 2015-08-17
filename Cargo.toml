@@ -13,5 +13,5 @@ license = "CC0-1.0"
 [dependencies]
 qdowncast = "^0.1"
 qindex_multi = "^0.3"
-rustc-serialize = "*"
+rustc-serialize = "^0.3
 
