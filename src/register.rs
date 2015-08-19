@@ -113,7 +113,6 @@ impl<T: Any + ?Sized> DefaultBase for T {}
 qdowncastable!(DefaultBase);
 qdowncast_methods!(DefaultBase);
 
-/// TODO naming? `ObjectMap`?
 pub struct ObjectMap<Obj: Any + ?Sized = DefaultBase> {
     options: BTreeMap<String, WiringOption<Obj>>,
 }
@@ -244,7 +243,6 @@ unsafe impl<'a, Str, Obj: ?Sized> MultiIndexable<&'a Str> for ObjectMap<Obj>
 
 // ++++++++++++++++++++ Register ++++++++++++++++++++ 
 
-/// TODO naming? `RegisterBuilder?` ObjectMap => `ObjectMap` & Register => `ObjectMap`?
 pub struct Register<Obj: Any + ?Sized = DefaultBase>{
     pub objects: ObjectMap<Obj>
 }
