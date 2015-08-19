@@ -110,52 +110,7 @@ macro_rules! qregister_load_fns {
     // 1.0 endpoint
     ($col:ident <-) => {};
 
-    // 1.1 expansion
-    ($col:ident <- single $ty:ty { name: $name:expr, init: $init:expr } $($ff:tt)*) => {
-        {
-            impl OptionReflect for $ty {
-                fn option_name() -> &'static str { $name }
-            }
-        
-            $col.singles.push(({$name}.to_string(), Box::new($init)));
-
-            qregister_load_fns!($col <- $($ff)*);
-        }
-    };
-
-    // 1.1 variant: $init and $name permutated
-    ($col:ident <- single $ty:ty { init: $init:expr, name: $name:expr } $($ff:tt)*) => {
-        qregister_load_fns!{
-            $col <- single $ty { name: $name, init: $init } 
-            $($ff)*
-        }
-    };
-
-    // 1.1 variant: $name omitted, default to type-name
-    ($col:ident <- single $ty:ty { init: $init:expr } $($ff:tt)*) => {
-        qregister_load_fns!{
-            $col <- single $ty { name: stringify!($ty), init: $init }
-            $($ff)*
-        }
-    };
-
-    // 1.1 variant: $init ommited, default to default-ctor
-    ($col:ident <- single $ty:ty { name: $name:expr } $($ff:tt)*) => {
-        qregister_load_fns!{
-            $col <- single $ty { name: $name, init: <$ty as Default>::default() }
-            $($ff)*
-        }
-    };
-
-    // 1.1 variant: $name and $init ommitted, default type-name and default-ctor
-    ($col:ident <- single $ty:ty; $($ff:tt)*) => {
-        qregister_load_fns!{
-            $col <- single $ty { name: stringify!($ty) }
-            $($ff)*
-        }
-    };
-
-    // 1.2 expansion
+    // 1.1 `option` expansion
     ($col:ident <- option $ty:ty { name: $name:expr } $($ff:tt)*) => {
         {
             impl OptionReflect for Box<$ty> {
@@ -168,7 +123,7 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.2 variant: $name omitted, default to type-name
+    // 1.1 `option` variant: $name omitted, default to type-name
     ($col:ident <- option $ty:ty; $($ff:tt)*) => {
         qregister_load_fns!{
             $col <- option $ty { name: stringify!($ty) }
@@ -176,10 +131,9 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.3 expansion
+    // 1.2 `alternative` expansion
     ($col:ident <- alternative($opt:ty) $ty:ty { name: $name:expr, init: $init:expr } $($ff:tt)*) => {
         {
-
             $col.alternatives.push((<Box<$opt> as ::qregister::OptionReflect>::option_name(), 
                                     {$name}.to_string(), 
                                     Box::new(Box::new($init) as Box<$opt>)));
@@ -188,7 +142,7 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.3 variant: $init and $name permutated
+    // 1.2 `alternative` variant: $init and $name permutated
     ($col:ident <- alternative($opt:ty) $ty:ty { init: $init:expr, name: $name:expr } $($ff:tt)*) => {
         qregister_load_fns!{
             $col <- alternative($opt) $ty { name: $name, init: $init } 
@@ -196,7 +150,7 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.3 variant: $name omitted, default to type-name
+    // 1.2 `alternative` variant: $name omitted, default to type-name
     ($col:ident <- alternative($opt:ty) $ty:ty { init: $init:expr } $($ff:tt)*) => {
         qregister_load_fns!{
             $col <- alternative($opt) $ty { name: stringify!($ty), init: $init }
@@ -204,7 +158,7 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.3 variant: $init ommited, default to default-ctor
+    // 1.2 `alternative` variant: $init ommited, default to default-ctor
     ($col:ident <- alternative($opt:ty) $ty:ty { name: $name:expr } $($ff:tt)*) => {
         qregister_load_fns!{
             $col <- alternative($opt) $ty { name: $name, init: <$ty as Default>::default() } 
@@ -212,7 +166,7 @@ macro_rules! qregister_load_fns {
         }
     };
 
-    // 1.3 variant: $name and $init ommitted, default to type-name and default-ctor
+    // 1.2 `alternative` variant: $name and $init ommitted, default to type-name and default-ctor
     ($col:ident <- alternative($opt:ty) $ty:ty; $($ff:tt)*) => {
         qregister_load_fns!{
             $col <- alternative($opt) $ty { name: stringify!($ty) }
@@ -220,10 +174,55 @@ macro_rules! qregister_load_fns {
         }
     };
 
+    // 1.3 `single` expansion
+    ($col:ident <- single $ty:ty { name: $name:expr, init: $init:expr } $($ff:tt)*) => {
+        {
+            impl OptionReflect for $ty {
+                fn option_name() -> &'static str { $name }
+            }
+        
+            $col.singles.push(({$name}.to_string(), Box::new($init)));
+
+            qregister_load_fns!($col <- $($ff)*);
+        }
+    };
+
+    // 1.3 `single` variant: $init and $name permutated
+    ($col:ident <- single $ty:ty { init: $init:expr, name: $name:expr } $($ff:tt)*) => {
+        qregister_load_fns!{
+            $col <- single $ty { name: $name, init: $init } 
+            $($ff)*
+        }
+    };
+
+    // 1.3 `single` variant: $name omitted, default to type-name
+    ($col:ident <- single $ty:ty { init: $init:expr } $($ff:tt)*) => {
+        qregister_load_fns!{
+            $col <- single $ty { name: stringify!($ty), init: $init }
+            $($ff)*
+        }
+    };
+
+    // 1.3 `single` variant: $init ommited, default to default-ctor
+    ($col:ident <- single $ty:ty { name: $name:expr } $($ff:tt)*) => {
+        qregister_load_fns!{
+            $col <- single $ty { name: $name, init: <$ty as Default>::default() }
+            $($ff)*
+        }
+    };
+
+    // 1.3 `single` variant: $name and $init ommitted, default type-name and default-ctor
+    ($col:ident <- single $ty:ty; $($ff:tt)*) => {
+        qregister_load_fns!{
+            $col <- single $ty { name: stringify!($ty) }
+            $($ff)*
+        }
+    };
+
     // 2.0 endpoint
     () => {};
 
-    // 2.1 expansion
+    // 2.1 fn expansion
     ($(#[$mmm:meta])* fn $name:ident($reg_type:ty, $($args:ident: $arg_types:ty),*) => { $($stmts:tt)+ } $($ff:tt)*) => {
         $(#[$mmm])*
         #[allow(unused)]
@@ -232,28 +231,28 @@ macro_rules! qregister_load_fns {
             use std::any::Any;
 
             struct Collect<Base: Any + ?Sized> {
-                singles: Vec<(String, Box<Base>)>,
                 options: Vec<String>,
                 alternatives: Vec<(&'static str, String, Box<Base>)>,
+                singles: Vec<(String, Box<Base>)>,
             }
             let mut col = Collect{ singles: vec![], options: vec![], alternatives: vec![] };
             
             qregister_load_fns!(col <- $($stmts)+);
 
-            for (name, obj) in col.singles {
-                reg.add_single(name, obj);
-            }
             for name in col.options {
                 reg.add_option(name);
             }
             for (opt_name, alt_name, obj) in col.alternatives {
                 reg.add_alternative(opt_name, alt_name, obj);
             }
+            for (name, obj) in col.singles {
+                reg.add_single(name, obj);
+            }
         }
         qregister_load_fns!($($ff)*);
     };
 
-    // 2.1 variant: no `,` after $reg_type
+    // 2.1 fn variant: no `,` after $reg_type
     ($(#[$mmm:meta])* fn $name:ident($reg_type:ty) => { $($stmts:tt)+ } $($ff:tt)*) => {
         qregister_load_fns!{
             $(#[$mmm])*
