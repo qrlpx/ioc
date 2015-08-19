@@ -179,12 +179,10 @@ macro_rules! qregister_load_fns {
     // 1.3 expansion
     ($col:ident <- alternative($opt:ty) $ty:ty { name: $name:expr, init: $init:expr } $($ff:tt)*) => {
         {
-            // utility to ensure that `t` is of type `T` (useful for compile-errors)
-            fn _echo<T>(t: T) -> T { t }
 
             $col.alternatives.push((<Box<$opt> as ::qregister::OptionReflect>::option_name(), 
                                     {$name}.to_string(), 
-                                    Box::new(_echo::<Box<$opt>>($init))));
+                                    Box::new(Box::new($init) as Box<$opt>)));
 
             qregister_load_fns!($col <- $($ff)*);
         }
@@ -209,7 +207,7 @@ macro_rules! qregister_load_fns {
     // 1.3 variant: $init ommited, default to default-ctor
     ($col:ident <- alternative($opt:ty) $ty:ty { name: $name:expr } $($ff:tt)*) => {
         qregister_load_fns!{
-            $col <- alternative($opt) $ty { name: $name, init: Box::new(<$ty as Default>::default()) as Box<$opt> } 
+            $col <- alternative($opt) $ty { name: $name, init: <$ty as Default>::default() } 
             $($ff)*
         }
     };
