@@ -104,6 +104,7 @@ pub fn load_module(regs: &mut MyRegisters, cfg: &Cfg){
 }
 ```
 **/
+
 #[macro_export]
 macro_rules! qregister_load_fns {
 
@@ -134,9 +135,11 @@ macro_rules! qregister_load_fns {
     // 1.2 `alternative` expansion
     ($col:ident <- alternative($opt:ty) $ty:ty { name: $name:expr, init: $init:expr } $($ff:tt)*) => {
         {
+            fn _echo<T>(t: T) -> T { t }
+
             $col.alternatives.push((<Box<$opt> as ::qregister::OptionReflect>::option_name(), 
                                     {$name}.to_string(), 
-                                    Box::new(Box::new($init) as Box<$opt>)));
+                                    Box::new(Box::new(_echo::<$ty>($init)) as Box<$opt>)));
 
             qregister_load_fns!($col <- $($ff)*);
         }
@@ -177,11 +180,13 @@ macro_rules! qregister_load_fns {
     // 1.3 `single` expansion
     ($col:ident <- single $ty:ty { name: $name:expr, init: $init:expr } $($ff:tt)*) => {
         {
+            fn _echo<T>(t: T) -> T { t }
+
             impl OptionReflect for $ty {
                 fn option_name() -> &'static str { $name }
             }
         
-            $col.singles.push(({$name}.to_string(), Box::new($init)));
+            $col.singles.push(({$name}.to_string(), Box::new(_echo::<$ty>($init))));
 
             qregister_load_fns!($col <- $($ff)*);
         }
@@ -223,19 +228,30 @@ macro_rules! qregister_load_fns {
     () => {};
 
     // 2.1 fn expansion
-    ($(#[$mmm:meta])* fn $name:ident($reg_type:ty, $($args:ident: $arg_types:ty),*) => { $($stmts:tt)+ } $($ff:tt)*) => {
+    ($(#[$mmm:meta])* fn $name:ident(&mut $reg_type:ty, $($args:ident: $arg_types:ty),*) => { $($stmts:tt)+ } $($ff:tt)*) => {
         $(#[$mmm])*
         #[allow(unused)]
-        fn $name(reg: $reg_type, $($args: $arg_types),*){
-            use qregister::OptionReflect;
+        fn $name(reg: &mut $reg_type, $($args: $arg_types),*){
+            use qregister::{OptionReflect, Register};
             use std::any::Any;
+            use std::borrow::BorrowMut;
 
+            trait _Register {
+                type Base: Any + ?Sized;
+            }
+
+            impl<'a, B: Any + ?Sized> _Register for Register<B> {
+                type Base = B;
+            }
+            
             struct Collect<Base: Any + ?Sized> {
                 options: Vec<String>,
                 alternatives: Vec<(&'static str, String, Box<Base>)>,
                 singles: Vec<(String, Box<Base>)>,
             }
-            let mut col = Collect{ singles: vec![], options: vec![], alternatives: vec![] };
+            let mut col = Collect::<<$reg_type as _Register>::Base>{ 
+                singles: vec![], options: vec![], alternatives: vec![] 
+            };
             
             qregister_load_fns!(col <- $($stmts)+);
 
@@ -253,10 +269,10 @@ macro_rules! qregister_load_fns {
     };
 
     // 2.1 fn variant: no `,` after $reg_type
-    ($(#[$mmm:meta])* fn $name:ident($reg_type:ty) => { $($stmts:tt)+ } $($ff:tt)*) => {
+    ($(#[$mmm:meta])* fn $name:ident(&mut $reg_type:ty) => { $($stmts:tt)+ } $($ff:tt)*) => {
         qregister_load_fns!{
             $(#[$mmm])*
-            fn $name($reg_type,) => {
+            fn $name(&mut $reg_type,) => {
                 $($stmts)+
             }
             $($ff)*
