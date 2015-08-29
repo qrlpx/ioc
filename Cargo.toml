@@ -1,6 +1,6 @@
 [package]
 name = "qregister"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["qrlpx <>"]
 keywords = ["inversion-of-control", "dependency-injection"]
 description = "A simple IoC (Inversion of Control) container."
