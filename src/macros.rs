@@ -1,4 +1,4 @@
-/** Utility macro for implementing `OptionReflect` and generating loading functions.
+/** Utility macro for implementing `ServiceReflect` and generating loading functions.
 
 ## `option`-statment
 
@@ -13,8 +13,8 @@ option $ty;
 
 Fields:
 
-* `$ty`: the type `OptionReflect` will be implemented for
-* `$name`: the `&'static str` that will be returned by `OptionReflect`, defaults to `stringify!($ty)`
+* `$ty`: the type `ServiceReflect` will be implemented for
+* `$name`: the `&'static str` that will be returned by `ServiceReflect`, defaults to `stringify!($ty)`
 
 ## `alternative`-statment
 
@@ -54,8 +54,8 @@ single $ty;
 
 Fields:
 
-* `$ty`: the type `OptionReflect` will be implemented for
-* `$name`: the `&'static str` that will be returned by `OptionReflect`, defaults to `stringify!($ty)`
+* `$ty`: the type `ServiceReflect` will be implemented for
+* `$name`: the `&'static str` that will be returned by `ServiceReflect`, defaults to `stringify!($ty)`
 * `$init`: the `obj`-value that will be passed to `RegisterModifier::add_single`, defaults to
 * `<$ty as Default>::default()`
 
@@ -114,7 +114,7 @@ macro_rules! qregister_load_fns {
     // 1.1 `option` expansion
     ($col:ident <- option $ty:ty { name: $name:expr } $($ff:tt)*) => {
         {
-            impl OptionReflect for Box<$ty> {
+            impl ServiceReflect for Box<$ty> {
                 fn option_name() -> &'static str { $name }
             }
 
@@ -137,7 +137,7 @@ macro_rules! qregister_load_fns {
         {
             fn _echo<T>(t: T) -> T { t }
 
-            $col.alternatives.push((<Box<$opt> as ::qregister::OptionReflect>::option_name(), 
+            $col.alternatives.push((<Box<$opt> as ::qregister::ServiceReflect>::option_name(), 
                                     {$name}.to_string(), 
                                     Box::new(Box::new(_echo::<$ty>($init)) as Box<$opt>)));
 
@@ -182,7 +182,7 @@ macro_rules! qregister_load_fns {
         {
             fn _echo<T>(t: T) -> T { t }
 
-            impl OptionReflect for $ty {
+            impl ServiceReflect for $ty {
                 fn option_name() -> &'static str { $name }
             }
         
@@ -232,15 +232,15 @@ macro_rules! qregister_load_fns {
         $(#[$mmm])*
         #[allow(unused)]
         fn $name(reg: &mut $reg_type, $($args: $arg_types),*){
-            use qregister::{OptionReflect, Register};
+            use qregister::{ServiceReflect, ServiceRegister};
             use std::any::Any;
             use std::borrow::BorrowMut;
 
-            trait _Register {
+            trait _ServiceRegister {
                 type Base: Any + ?Sized;
             }
 
-            impl<'a, B: Any + ?Sized> _Register for Register<B> {
+            impl<'a, B: Any + ?Sized> _ServiceRegister for ServiceRegister<B> {
                 type Base = B;
             }
             
@@ -249,7 +249,7 @@ macro_rules! qregister_load_fns {
                 alternatives: Vec<(&'static str, String, Box<Base>)>,
                 singles: Vec<(String, Box<Base>)>,
             }
-            let mut col = Collect::<<$reg_type as _Register>::Base>{ 
+            let mut col = Collect::<<$reg_type as _ServiceRegister>::Base>{ 
                 singles: vec![], options: vec![], alternatives: vec![] 
             };
             
@@ -258,11 +258,11 @@ macro_rules! qregister_load_fns {
             for name in col.options {
                 reg.add_option(name);
             }
-            for (opt_name, alt_name, obj) in col.alternatives {
-                reg.add_alternative(opt_name, alt_name, obj);
+            for (opt_name, alt_name, service) in col.alternatives {
+                reg.add_alternative(opt_name, alt_name, service);
             }
-            for (name, obj) in col.singles {
-                reg.add_single(name, obj);
+            for (name, service) in col.singles {
+                reg.add_single(name, service);
             }
         }
         qregister_load_fns!($($ff)*);

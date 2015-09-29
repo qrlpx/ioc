@@ -19,6 +19,3 @@ extern crate rustc_serialize;
 mod register;
 pub use register::*;
 
-mod wiring;
-pub use wiring::Wiring;
-

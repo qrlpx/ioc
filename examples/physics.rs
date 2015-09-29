@@ -1,5 +1,5 @@
 #[macro_use] extern crate qregister;
-pub use qregister::Register;
+use qregister::ServiceRegister;
 use std::any::Any;
 
 pub trait Physics: Any {
@@ -25,7 +25,7 @@ impl Physics for LegacyPhysics {
 }
 
 qregister_load_fns!{
-    fn load_module(&mut Register) => {
+    fn load_module(&mut ServiceRegister) => {
     
         option Physics;
 
@@ -37,15 +37,15 @@ qregister_load_fns!{
 
 
 fn main(){
-    let mut reg = Register::new();
+    let mut reg = ServiceRegister::new();
 
     self::load_module(&mut reg);
 
     reg.wire_alternative("Physics", "NPhysicsPhysics");
 
-    reg.objects.get_mut::<Box<Physics>>().unwrap().progress(1.0);
+    reg.services_mut().get_mut::<Box<Physics>>().unwrap().progress(1.0);
 
     reg.wire_alternative("Physics", "LegacyPhysics");
 
-    reg.objects.get_mut::<Box<Physics>>().unwrap().progress(1.0);
+    reg.services_mut().get_mut::<Box<Physics>>().unwrap().progress(1.0);
 }

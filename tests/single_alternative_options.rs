@@ -19,7 +19,7 @@ pub struct Name;
 pub struct Semicolon;
 
 qregister_load_fns!{
-    fn load_fn(&mut qregister::Register) => {
+    fn load_fn(&mut qregister::ServiceRegister) => {
         single NameAndInit { name: "NameAndInit", init: NameAndInit }
         single InitAndName { name: "InitAndName", init: InitAndName }
         single Init { init: Init }
