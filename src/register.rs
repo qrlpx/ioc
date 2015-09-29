@@ -17,13 +17,13 @@ pub trait ServiceReflect: Any {
 // ++++++++++++++++++++ GetSerectError ++++++++++++++++++++ 
 
 #[derive(Debug, Clone)]
-pub enum GetSerectError<'a> {
+pub enum GetSerivceError<'a> {
     TypeMismatch{ option_name: &'a str, expected: TypeId, found: TypeId },
     MissingOption(&'a str),
 }
 
 impl<'a> GetSerectError<'a> {
-    pub fn type_mismatch<Expected>(found: TypeId) -> GetSerectError<'static> 
+    pub fn type_mismatch<Expected>(found: TypeId) -> GetSerivceError<'static> 
         where Expected: ServiceReflect
     {
         GetSerectError::TypeMismatch{
