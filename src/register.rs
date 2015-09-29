@@ -14,19 +14,19 @@ pub trait ServiceReflect: Any {
     fn option_name() -> &'static str;
 }
 
-// ++++++++++++++++++++ GetSerectError ++++++++++++++++++++ 
+// ++++++++++++++++++++ GetServiceError ++++++++++++++++++++ 
 
 #[derive(Debug, Clone)]
-pub enum GetSerivceError<'a> {
+pub enum GetServiceError<'a> {
     TypeMismatch{ option_name: &'a str, expected: TypeId, found: TypeId },
     MissingOption(&'a str),
 }
 
-impl<'a> GetSerectError<'a> {
-    pub fn type_mismatch<Expected>(found: TypeId) -> GetSerivceError<'static> 
+impl<'a> GetServiceError<'a> {
+    pub fn type_mismatch<Expected>(found: TypeId) -> GetServiceError<'static> 
         where Expected: ServiceReflect
     {
-        GetSerectError::TypeMismatch{
+        GetServiceError::TypeMismatch{
             option_name: Expected::option_name(),
             expected: TypeId::of::<Expected>(),
             found: found,
@@ -34,7 +34,7 @@ impl<'a> GetSerectError<'a> {
     }
 }
 
-pub type GetSerectResult<'a, T> = Result<T, GetSerectError<'a>>;
+pub type GetSerectResult<'a, T> = Result<T, GetServiceError<'a>>;
 
 // ++++++++++++++++++++ WiringOption ++++++++++++++++++++ 
 
@@ -137,10 +137,10 @@ impl<Ser: Any + ?Sized> ServiceMap<Ser> {
                 let ty = (&*base).get_type_id();
                 match QDowncastable::downcast_ref(base) {
                     Some(ret) => Ok(ret),
-                    None => Err(GetSerectError::type_mismatch::<T>(ty))
+                    None => Err(GetServiceError::type_mismatch::<T>(ty))
                 }
             }
-            None => Err(GetSerectError::MissingOption(T::option_name()))
+            None => Err(GetServiceError::MissingOption(T::option_name()))
         }
     }
 
@@ -153,10 +153,10 @@ impl<Ser: Any + ?Sized> ServiceMap<Ser> {
                 let ty = (&*base).get_type_id();
                 match QDowncastable::downcast_mut(base) {
                     Some(ret) => Ok(ret),
-                    None => Err(GetSerectError::type_mismatch::<T>(ty))
+                    None => Err(GetServiceError::type_mismatch::<T>(ty))
                 }
             }
-            None => Err(GetSerectError::MissingOption(T::option_name()))
+            None => Err(GetServiceError::MissingOption(T::option_name()))
         }
     }
 
