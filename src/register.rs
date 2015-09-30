@@ -34,7 +34,7 @@ impl<'a> GetServiceError<'a> {
     }
 }
 
-pub type GetSerectResult<'a, T> = Result<T, GetServiceError<'a>>;
+pub type GetServiceResult<'a, T> = Result<T, GetServiceError<'a>>;
 
 // ++++++++++++++++++++ WiringOption ++++++++++++++++++++ 
 
@@ -129,7 +129,7 @@ impl<Ser: Any + ?Sized> ServiceMap<Ser> {
     }
 
     /// Gets the service wired to option `opt_name` immutably, then tries to downcast it.
-    pub fn get<T>(&self) -> GetSerectResult<&T> 
+    pub fn get<T>(&self) -> GetServiceResult<&T> 
         where T: ServiceReflect, Ser: QDowncastable<T>
     { 
         match self.get_service(T::option_name()) {
@@ -145,7 +145,7 @@ impl<Ser: Any + ?Sized> ServiceMap<Ser> {
     }
 
     /// Gets the service wired to option `opt_name` mutably, then tries to downcast it.
-    pub fn get_mut<T>(&mut self) -> GetSerectResult<&mut T> 
+    pub fn get_mut<T>(&mut self) -> GetServiceResult<&mut T> 
         where T: ServiceReflect, Ser: QDowncastable<T>
     { 
         match self.get_service_mut(T::option_name()) {
