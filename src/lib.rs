@@ -1,21 +1,54 @@
 //! ### TODO
 //!
-//! * Clarify terminology (to wire, to load, option, alternative, option).
-//! * Single alternative options are a _special case_ of options/alternatives. 
-//!   To avoid confusion, all code & doc related to single alternative options 
-//!   should be listed after regular options/alternatives.
-//! * Panics vs error?
-//! * remove_option, remove_alternative?
+//! * impl {Error, Display} for errors?
 
-#![feature(get_type_id)]
-#![feature(box_syntax)]
+#![feature(get_type_id)] 
+#![feature(associated_type_defaults)] 
 
-#[macro_use] extern crate qdowncast;
-extern crate qindex_multi;
-extern crate rustc_serialize;
+#[macro_use] extern crate downcast;
 
-#[macro_use] mod macros;
+mod service;
+mod factory;
+mod invocation_method;
+mod ioc;
 
-mod register;
-pub use register::*;
+pub use service::*;
+pub use factory::*;
+pub use invocation_method::*;
+pub use ioc::*;
+
+#[test]
+fn read_trait_object(){
+    macro_rules! service {
+        ($ty:ty, $name:expr) => {
+            impl ServiceReflect for $ty {
+                fn key() -> &'static str { $name }
+            }
+
+            impl Into<Box<DefaultBase>> for Box<$ty> {
+                fn into(self) -> Box<DefaultBase> { self }
+            }
+        };
+    }
+
+    trait Foo {
+        fn foo(&self) -> &str;
+    }
+
+    service!(Box<Foo>, "foo");
+
+    struct FooBar;
+
+    impl Foo for FooBar{
+        fn foo(&self) -> &str { "bar" }  
+    }
+
+    let mut builder = IocBuilder::<String>::new();
+    builder.register(Box::new(FooBar) as Box<Foo>);
+
+    let ioc = builder.build();
+
+    assert_eq!("bar", ioc.read::<Box<Foo>>().unwrap().foo());
+}
+
 
