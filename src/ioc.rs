@@ -7,6 +7,7 @@ use downcast::Downcast;
 use std::any::Any;
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
+use std::fmt::Debug;
 use std::sync::RwLock;
 
 // ++++++++++++++++++++ Ioc ++++++++++++++++++++
@@ -17,7 +18,7 @@ pub struct Ioc<Key = str, Base: ?Sized = DefaultBase> {
 }
 
 impl<Key, Base: ?Sized> Ioc<Key, Base> 
-    where Key: Ord, Base: Any
+    where Key: Debug + Ord, Base: Any
 {
     #[doc(hidden)]
     pub fn new(services: BTreeMap<Key, RwLock<Box<Base>>>) -> Self {
@@ -83,7 +84,7 @@ pub struct IocBuilder<Key = str, Base: ?Sized = DefaultBase> {
 }
 
 impl<Key, Base: ?Sized> IocBuilder<Key, Base>
-    where Key: Ord, Base: Any
+    where Key: Debug + Ord, Base: Any
 {
     pub fn new() -> Self {
         IocBuilder{ services: BTreeMap::new() }

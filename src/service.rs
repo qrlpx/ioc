@@ -1,6 +1,7 @@
 use downcast::Downcast;
 
 use std::any::Any;
+use std::fmt::Debug;
 
 // ++++++++++++++++++++ DefaultBase ++++++++++++++++++++
 // TODO should this be located here?
@@ -15,7 +16,7 @@ impl<T: Any> DefaultBase for T {}
 // ++++++++++++++++++++ ServiceReflect ++++++++++++++++++++
 
 pub trait ServiceReflect: Any + Sized {
-    type Key: ?Sized + Ord = str;
+    type Key: ?Sized + Debug + Ord = str;
     fn key() -> &'static Self::Key;
 }
 

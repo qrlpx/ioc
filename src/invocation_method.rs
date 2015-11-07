@@ -9,6 +9,7 @@ use downcast::Downcast;
 use std::any::{Any, TypeId};
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
+use std::fmt::Debug;
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
@@ -17,11 +18,11 @@ use std::marker::PhantomData;
 
 /// TODO naming? `Invocation`?
 pub trait InvocationMethod<'a, Key = String, Base: ?Sized = DefaultBase> 
-    where Key: Ord, Base: Any
+    where Key: Debug + Ord, Base: Any
 {
     type Args;
     type Ret;
-    type Error;
+    type Error: Debug;
 
     fn invoke(
         services: &'a BTreeMap<Key, RwLock<Box<Base>>>, 
@@ -69,7 +70,7 @@ impl<'a, Svc, Base: ?Sized> Deref for ServiceReadGuard<'a, Svc, Base>
 pub struct Read<Svc>(PhantomData<Svc>);
 
 impl<'a, Svc, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for Read<Svc> 
-    where Svc: ServiceReflect, Key: Borrow<Svc::Key> + Ord, Base: Downcast<Svc>
+    where Svc: ServiceReflect, Key: Borrow<Svc::Key> + Debug + Ord, Base: Downcast<Svc>
 {
     type Args = ();
     type Ret = ServiceReadGuard<'a, Svc, Base>;
@@ -126,7 +127,7 @@ impl<'a, Svc, Base: ?Sized> DerefMut for ServiceWriteGuard<'a, Svc, Base>
 pub struct Write<Svc>(PhantomData<Svc>);
 
 impl<'a, Svc, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for Write<Svc> 
-    where Svc: ServiceReflect, Key: Borrow<Svc::Key> + Ord, Base: Downcast<Svc>
+    where Svc: ServiceReflect, Key: Borrow<Svc::Key> + Debug + Ord, Base: Downcast<Svc>
 {
     type Args = ();
     type Ret = ServiceWriteGuard<'a, Svc, Base>;
@@ -164,7 +165,7 @@ impl<'a, Obj, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for Create<Obj>
 where 
     Obj: FactoryObject, 
     Obj::Factory: ServiceReflect, 
-    Key: Borrow<<Obj::Factory as ServiceReflect>::Key> + Ord, 
+    Key: Borrow<<Obj::Factory as ServiceReflect>::Key> + Debug + Ord, 
     Base: Downcast<Obj::Factory>,
 {
     type Args = <Obj::Factory as Factory<Obj>>::Args;
@@ -192,13 +193,13 @@ where
 // ++++++++++++++++++++ ReadAll ++++++++++++++++++++
 
 pub type ServiceReadGuardMap<'a, Key, Base: ?Sized>
-    where Key: Ord
+    where Key: Debug + Ord
 = BTreeMap<&'a Key, RwLockReadGuard<'a, Box<Base>>>;
 
 pub struct ReadAll(());
 
 impl<'a, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for ReadAll 
-    where Key: Ord + 'a, Base: Any
+    where Key: Debug + Ord + 'a, Base: Any
 {
     type Args = ();
     type Ret = ServiceReadGuardMap<'a, Key, Base>;
@@ -222,13 +223,13 @@ impl<'a, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for ReadAll
 // ++++++++++++++++++++ WriteAll ++++++++++++++++++++
 
 pub type ServiceWriteGuardMap<'a, Key, Base: ?Sized>
-    where Key: Ord
+    where Key: Debug + Ord
 = BTreeMap<&'a Key, RwLockWriteGuard<'a, Box<Base>>>;
 
 pub struct WriteAll(());
 
 impl<'a, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for WriteAll 
-    where Key: Ord + 'a, Base: Any
+    where Key: Debug + Ord + 'a, Base: Any
 {
     type Args = ();
     type Ret = ServiceWriteGuardMap<'a, Key, Base>;
@@ -264,7 +265,7 @@ macro_rules! multi_methods {
         }
 
         impl<'a, $($params),+, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for ($($params,)+) 
-            where $($params: InvocationMethod<'a, Key, Base>),+, Key: Ord, Base: Any
+            where $($params: InvocationMethod<'a, Key, Base>),+, Key: Debug + Ord, Base: Any
         {
             type Args = ($($params::Args,)+);
             type Ret = ($($params::Ret,)+);
