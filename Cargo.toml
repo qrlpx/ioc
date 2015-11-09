@@ -1,9 +1,9 @@
 [package]
 name = "ioc"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["qrlpx <>"]
 
-repository = "https://github.com/qrlpx/ioc-rs"
+repository = "https://github.com/qrlpx/ioc"
 description = "A simple IoC (Inversion of Control) container in Rust. "
 
 license = "CC0-1.0"

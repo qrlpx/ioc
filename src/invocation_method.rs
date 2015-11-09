@@ -30,7 +30,24 @@ pub trait InvocationMethod<'a, Key = String, Base: ?Sized = DefaultBase>
     ) -> Result<Self::Ret, Self::Error>;
 }
 
-// ++++++++++++++++++++ Error ++++++++++++++++++++
+// ++++++++++++++++++++ NOP ++++++++++++++++++++
+
+impl<'a, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for () 
+    where Key: Debug + Ord, Base: Any
+{
+    type Args = ();
+    type Ret = ();
+    type Error = ();
+
+    fn invoke(
+        _: &'a BTreeMap<Key, RwLock<Box<Base>>>,
+        _: Self::Args
+    ) -> Result<Self::Ret, Self::Error> {
+        Ok(())
+    }
+}
+
+// ++++++++++++++++++++ errors ++++++++++++++++++++
 
 #[derive(Debug)]
 pub enum LockError<K> {
