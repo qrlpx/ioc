@@ -1,6 +1,6 @@
 [package]
 name = "ioc"
-version = "0.0.3"
+version = "0.0.4"
 authors = ["qrlpx <>"]
 
 repository = "https://github.com/qrlpx/ioc"

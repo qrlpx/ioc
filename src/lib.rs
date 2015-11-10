@@ -17,6 +17,9 @@ pub use factory::*;
 pub use invocation_method::*;
 pub use ioc::*;
 
+pub use Read as R;
+pub use Write as W;
+
 #[test]
 fn read_trait_object(){
     macro_rules! service {

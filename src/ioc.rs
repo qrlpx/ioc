@@ -20,11 +20,6 @@ pub struct Ioc<Key = str, Base: ?Sized = DefaultBase> {
 impl<Key, Base: ?Sized> Ioc<Key, Base> 
     where Key: Debug + Ord, Base: Any
 {
-    #[doc(hidden)]
-    pub fn new(services: BTreeMap<Key, RwLock<Box<Base>>>) -> Self {
-        Ioc{ services: services }
-    }
-
     pub fn services(&self) -> &BTreeMap<Key, RwLock<Box<Base>>> { &self.services }
 
     pub fn invoke<'a, M>(&'a self, args: M::Args) -> Result<M::Ret, M::Error>
@@ -108,7 +103,13 @@ impl<Key, Base: ?Sized> IocBuilder<Key, Base>
     }
 
     pub fn build(self) -> Ioc<Key, Base> {
-        Ioc::new(self.services)
+        Ioc{ services: self.services }
     }
+}
+
+impl<Key, Base: ?Sized> Default for IocBuilder<Key, Base>
+    where Key: Debug + Ord, Base: Any
+{
+    fn default() -> Self { Self::new() }
 }
 
