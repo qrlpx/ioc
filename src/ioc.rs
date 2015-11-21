@@ -8,23 +8,34 @@ use std::any::Any;
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
-use std::sync::RwLock;
+use std::sync::{Mutex, RwLock};
 
 // ++++++++++++++++++++ Ioc ++++++++++++++++++++
 
 /// TODO naming?
 pub struct Ioc<Key = str, Base: ?Sized = DefaultBase> {
     services: BTreeMap<Key, RwLock<Box<Base>>>,
+
+    deadlock_prevention: Mutex<()>, 
 }
 
 impl<Key, Base: ?Sized> Ioc<Key, Base> 
     where Key: Debug + Ord, Base: Any
 {
-    pub fn services(&self) -> &BTreeMap<Key, RwLock<Box<Base>>> { &self.services }
+    fn new(services: BTreeMap<Key, RwLock<Box<Base>>>) -> Self {
+        Ioc{ 
+            services: services,
+            deadlock_prevention: Mutex::new(()),
+        }
+    }
 
     pub fn invoke<'a, M>(&'a self, args: M::Args) -> Result<M::Ret, M::Error>
         where M: InvocationMethod<'a, Key, Base>, 
     {
+        // in order to prevent AB-BA deadlocks, we aquire a mutex before letting 
+        // the InvocationMethod do it's thing.
+        let _ = self.deadlock_prevention.lock();
+
         M::invoke(&self.services, args)
     }
 
@@ -94,16 +105,16 @@ impl<Key, Base: ?Sized> IocBuilder<Key, Base>
     /// HKT or a `Coercible`-trait (to name two solutions).
     pub fn register<Svc>(&mut self, svc: Svc) -> &mut Self
         where Svc: ServiceReflect, 
-              Svc::Key: ToOwned<Owned = Key>, 
+              &'static Svc::Key: Into<Key>, 
               Key: Borrow<Svc::Key>, //TODO why is this line required?
               Box<Svc>: Into<Box<Base>>,
     {
         let key = Svc::key();
-        self.register_service(key.to_owned(), Box::new(svc).into())
+        self.register_service(key.into(), Box::new(svc).into())
     }
 
     pub fn build(self) -> Ioc<Key, Base> {
-        Ioc{ services: self.services }
+        Ioc::new(self.services)
     }
 }
 
