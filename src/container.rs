@@ -38,14 +38,14 @@ impl<Key, Base: ?Sized> Container<Key, Base>
     }
 
     /// Shortcut for `.invoke::<ioc::Read<{Svc}>>(())`.
-    pub fn read<Svc>(&self) -> Result<ServiceReadGuard<Svc, Base>, LockError<Svc::Key>>
+    pub fn read<Svc>(&self) -> Result<ReadGuard<Svc, Base>, LockError<Svc::Key>>
         where Svc: ServiceReflect<Key = Key>, Base: Downcast<Svc>
     {
         self.invoke::<Read<Svc>>(())
     }
 
     /// Shortcut for `.invoke::<ioc::Write<{Svc}>>(())`.
-    pub fn write<Svc>(&self) -> Result<ServiceWriteGuard<Svc, Base>, LockError<Svc::Key>>
+    pub fn write<Svc>(&self) -> Result<WriteGuard<Svc, Base>, LockError<Svc::Key>>
         where Svc: ServiceReflect<Key = Key>, Base: Downcast<Svc>
     {
         self.invoke::<Write<Svc>>(())
@@ -65,12 +65,12 @@ impl<Key, Base: ?Sized> Container<Key, Base>
     }
 
     /// Shortcut for `.invoke::<ioc::ReadAll>(())`.
-    pub fn read_all(&self) -> Result<ServiceReadGuardMap<Key, Base>, LockError<Key>> {
+    pub fn read_all(&self) -> Result<ReadGuardMap<Key, Base>, LockError<Key>> {
         self.invoke::<ReadAll>(())
     }
 
     /// Shortcut for `.invoke::<ioc::WriteAll>(())`.
-    pub fn write_all(&self) -> Result<ServiceWriteGuardMap<Key, Base>, LockError<Key>> {
+    pub fn write_all(&self) -> Result<WriteGuardMap<Key, Base>, LockError<Key>> {
         self.invoke::<WriteAll>(())
     }
 }
