@@ -1,15 +1,13 @@
 // TODO? lots of type-noise here, very ugly... maybe we should just use `InvocationMethod` 
 // for dispatching, and move the actual functionality to the `Ioc`.
 
-use service::{DefaultBase, ServiceReflect};
+use service::{DefaultBase, ServiceKey, ServiceReflect};
 use factory::{FactoryObject, Factory};
 
 use downcast::Downcast;
 
 use std::any::{Any, TypeId};
-use std::borrow::Borrow;
 use std::collections::BTreeMap;
-use std::fmt::Debug;
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
@@ -18,11 +16,11 @@ use std::marker::PhantomData;
 
 /// TODO naming? `Invocation`?
 pub trait InvocationMethod<'a, Key = String, Base: ?Sized = DefaultBase> 
-    where Key: Debug + Ord, Base: Any
+    where Key: ServiceKey, Base: Any
 {
     type Args;
     type Ret;
-    type Error: Debug;
+    type Error;
 
     fn invoke(
         services: &'a BTreeMap<Key, RwLock<Box<Base>>>, 
@@ -33,7 +31,7 @@ pub trait InvocationMethod<'a, Key = String, Base: ?Sized = DefaultBase>
 // ++++++++++++++++++++ NOP ++++++++++++++++++++
 
 impl<'a, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for () 
-    where Key: Debug + Ord, Base: Any
+    where Key: ServiceKey, Base: Any
 {
     type Args = ();
     type Ret = ();
@@ -50,20 +48,20 @@ impl<'a, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for ()
 // ++++++++++++++++++++ errors ++++++++++++++++++++
 
 #[derive(Debug)]
-pub enum LockError<K> {
-    NotFound{ key: K },
-    Poisoned{ key: K },
-    MismatchedType{ key: K, expected: TypeId, found: TypeId },
+pub enum LockError<'a, Key: 'a> {
+    NotFound{ key: &'a Key },
+    Poisoned{ key: &'a Key },
+    MismatchedType{ key: &'a Key, expected: TypeId, found: TypeId },
 }
 
 #[derive(Debug)]
-pub enum CreationError<K, CE> {
-    LockError(LockError<K>),
-    CreationError{ key: K, error: CE },
+pub enum CreationError<'a, Key: 'a, CE> {
+    LockError(LockError<'a, Key>),
+    CreationError{ key: &'a Key, error: CE },
 }
 
-impl<K, CE> From<LockError<K>> for CreationError<K, CE> {
-    fn from(err: LockError<K>) -> Self {
+impl<'a, Key: 'a, CE> From<LockError<'a, Key>> for CreationError<'a, Key, CE> {
+    fn from(err: LockError<'a, Key>) -> Self {
         CreationError::LockError(err)
     }
 }
@@ -87,11 +85,11 @@ impl<'a, Svc, Base: ?Sized> Deref for ServiceReadGuard<'a, Svc, Base>
 pub struct Read<Svc>(PhantomData<Svc>);
 
 impl<'a, Svc, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for Read<Svc> 
-    where Svc: ServiceReflect, Key: Borrow<Svc::Key> + Debug + Ord, Base: Downcast<Svc>
+    where Svc: ServiceReflect<Key = Key>, Key: ServiceKey, Base: Downcast<Svc>
 {
     type Args = ();
     type Ret = ServiceReadGuard<'a, Svc, Base>;
-    type Error = LockError<&'static Svc::Key>;
+    type Error = LockError<'a, Svc::Key>;
 
     fn invoke(
         services: &'a BTreeMap<Key, RwLock<Box<Base>>>,
@@ -144,11 +142,11 @@ impl<'a, Svc, Base: ?Sized> DerefMut for ServiceWriteGuard<'a, Svc, Base>
 pub struct Write<Svc>(PhantomData<Svc>);
 
 impl<'a, Svc, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for Write<Svc> 
-    where Svc: ServiceReflect, Key: Borrow<Svc::Key> + Debug + Ord, Base: Downcast<Svc>
+    where Svc: ServiceReflect<Key = Key>, Key: ServiceKey, Base: Downcast<Svc>
 {
     type Args = ();
     type Ret = ServiceWriteGuard<'a, Svc, Base>;
-    type Error = LockError<&'static Svc::Key>;
+    type Error = LockError<'a, Svc::Key>;
 
     fn invoke(
         services: &'a BTreeMap<Key, RwLock<Box<Base>>>,
@@ -181,14 +179,14 @@ pub struct Create<Obj>(PhantomData<Obj>);
 impl<'a, Obj, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for Create<Obj> 
 where 
     Obj: FactoryObject, 
-    Obj::Factory: ServiceReflect, 
-    Key: Borrow<<Obj::Factory as ServiceReflect>::Key> + Debug + Ord, 
+    Obj::Factory: ServiceReflect<Key = Key>, 
+    Key: ServiceKey, 
     Base: Downcast<Obj::Factory>,
 {
     type Args = <Obj::Factory as Factory<Obj>>::Args;
     type Ret = Obj;
-    type Error = CreationError<
-        &'static <Obj::Factory as ServiceReflect>::Key, 
+    type Error = CreationError<'a,
+        <Obj::Factory as ServiceReflect>::Key, 
         <Obj::Factory as Factory<Obj>>::Error
     >;
 
@@ -210,17 +208,17 @@ where
 // ++++++++++++++++++++ ReadAll ++++++++++++++++++++
 
 pub type ServiceReadGuardMap<'a, Key, Base: ?Sized>
-    where Key: Debug + Ord
+    where Key: ServiceKey
 = BTreeMap<&'a Key, RwLockReadGuard<'a, Box<Base>>>;
 
 pub struct ReadAll(());
 
 impl<'a, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for ReadAll 
-    where Key: Debug + Ord + 'a, Base: Any
+    where Key: ServiceKey + 'a, Base: Any
 {
     type Args = ();
     type Ret = ServiceReadGuardMap<'a, Key, Base>;
-    type Error = LockError<&'a Key>;
+    type Error = LockError<'a, Key>;
 
     fn invoke(
         services: &'a BTreeMap<Key, RwLock<Box<Base>>>,
@@ -240,17 +238,17 @@ impl<'a, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for ReadAll
 // ++++++++++++++++++++ WriteAll ++++++++++++++++++++
 
 pub type ServiceWriteGuardMap<'a, Key, Base: ?Sized>
-    where Key: Debug + Ord
+    where Key: ServiceKey
 = BTreeMap<&'a Key, RwLockWriteGuard<'a, Box<Base>>>;
 
 pub struct WriteAll(());
 
 impl<'a, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for WriteAll 
-    where Key: Debug + Ord + 'a, Base: Any
+    where Key: ServiceKey + 'a, Base: Any
 {
     type Args = ();
     type Ret = ServiceWriteGuardMap<'a, Key, Base>;
-    type Error = LockError<&'a Key>;
+    type Error = LockError<'a, Key>;
 
     fn invoke(
         services: &'a BTreeMap<Key, RwLock<Box<Base>>>,
@@ -282,7 +280,7 @@ macro_rules! multi_methods {
         }
 
         impl<'a, $($params),+, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for ($($params,)+) 
-            where $($params: InvocationMethod<'a, Key, Base>),+, Key: Debug + Ord, Base: Any
+            where $($params: InvocationMethod<'a, Key, Base>),+, Key: ServiceKey, Base: Any
         {
             type Args = ($($params::Args,)+);
             type Ret = ($($params::Ret,)+);
@@ -321,5 +319,4 @@ multi_methods!{
     MultiError15 {A:0 B:1 C:2 D:3 E:4 F:5 G:6 H:7 J:8 K:9 L:10 M:11 N:12 O:13 P:14}
     MultiError16 {A:0 B:1 C:2 D:3 E:4 F:5 G:6 H:7 J:8 K:9 L:10 M:11 N:12 O:13 P:14 Q:15}
 }
-
 

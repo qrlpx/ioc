@@ -10,22 +10,34 @@
 mod service;
 mod factory;
 mod invocation_method;
-mod ioc;
+mod container;
 
 pub use service::*;
 pub use factory::*;
 pub use invocation_method::*;
-pub use ioc::*;
+pub use container::*;
 
+/// Alias for `Read`.
 pub use Read as R;
+
+/// Alias for `Write`.
 pub use Write as W;
 
+// TODO move this into tests/examples
+/*#[macro_use] 
+extern crate lazy_static;
+
 #[test]
-fn read_trait_object(){
+fn read_trait_object(){    
     macro_rules! service {
         ($ty:ty, $name:expr) => {
             impl ServiceReflect for $ty {
-                fn key() -> &'static str { $name }
+                fn key() -> &'static String {
+                    lazy_static!{
+                        static ref RET: String = $name.into();
+                    }
+                    &*RET
+                }
             }
 
             impl Into<Box<DefaultBase>> for Box<$ty> {
@@ -34,7 +46,7 @@ fn read_trait_object(){
         };
     }
 
-    trait Foo {
+    trait Foo: Sync {
         fn foo(&self) -> &str;
     }
 
@@ -46,12 +58,12 @@ fn read_trait_object(){
         fn foo(&self) -> &str { "bar" }  
     }
 
-    let mut builder = IocBuilder::<String>::new();
+    let mut builder = ContainerBuilder::<String>::new();
     builder.register(Box::new(FooBar) as Box<Foo>);
 
     let ioc = builder.build();
 
     assert_eq!("bar", ioc.read::<Box<Foo>>().unwrap().foo());
-}
+}*/
 
 
