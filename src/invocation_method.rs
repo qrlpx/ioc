@@ -8,6 +8,7 @@ use downcast::Downcast;
 
 use std::any::{Any, TypeId};
 use std::collections::BTreeMap;
+use std::fmt::Debug;
 use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
@@ -20,7 +21,7 @@ pub trait InvocationMethod<'a, Key = String, Base: ?Sized = DefaultBase>
 {
     type Args;
     type Ret;
-    type Error;
+    type Error: Debug;
 
     fn invoke(
         services: &'a BTreeMap<Key, RwLock<Box<Base>>>, 
