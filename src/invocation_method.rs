@@ -19,14 +19,10 @@ use std::marker::PhantomData;
 pub trait InvocationMethod<'a, Key = String, Base: ?Sized = DefaultBase> 
     where Key: ServiceKey, Base: Any
 {
-    type Args;
     type Ret;
     type Error: Debug;
 
-    fn invoke(
-        services: &'a BTreeMap<Key, RwLock<Box<Base>>>, 
-        args: Self::Args
-    ) -> Result<Self::Ret, Self::Error>;
+    fn invoke(services: &'a BTreeMap<Key, RwLock<Box<Base>>>) -> Result<Self::Ret, Self::Error>;
 }
 
 // ++++++++++++++++++++ NOP ++++++++++++++++++++
@@ -34,14 +30,10 @@ pub trait InvocationMethod<'a, Key = String, Base: ?Sized = DefaultBase>
 impl<'a, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for () 
     where Key: ServiceKey, Base: Any
 {
-    type Args = ();
     type Ret = ();
     type Error = ();
 
-    fn invoke(
-        _: &'a BTreeMap<Key, RwLock<Box<Base>>>,
-        _: Self::Args
-    ) -> Result<Self::Ret, Self::Error> {
+    fn invoke(_: &'a BTreeMap<Key, RwLock<Box<Base>>>) -> Result<Self::Ret, Self::Error> {
         Ok(())
     }
 }
@@ -88,14 +80,10 @@ pub struct Read<Svc>(PhantomData<Svc>);
 impl<'a, Svc, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for Read<Svc> 
     where Svc: ServiceReflect<Key = Key>, Key: ServiceKey, Base: Downcast<Svc>
 {
-    type Args = ();
     type Ret = ReadGuard<'a, Svc, Base>;
     type Error = LockError<'a, Svc::Key>;
 
-    fn invoke(
-        services: &'a BTreeMap<Key, RwLock<Box<Base>>>,
-        _: Self::Args
-    ) -> Result<Self::Ret, Self::Error> {
+    fn invoke(services: &'a BTreeMap<Key, RwLock<Box<Base>>>) -> Result<Self::Ret, Self::Error> {
         let key = Svc::key();
         let service = match services.get(key) {
             Some(r) => r, 
@@ -145,14 +133,10 @@ pub struct Write<Svc>(PhantomData<Svc>);
 impl<'a, Svc, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for Write<Svc> 
     where Svc: ServiceReflect<Key = Key>, Key: ServiceKey, Base: Downcast<Svc>
 {
-    type Args = ();
     type Ret = WriteGuard<'a, Svc, Base>;
     type Error = LockError<'a, Svc::Key>;
 
-    fn invoke(
-        services: &'a BTreeMap<Key, RwLock<Box<Base>>>,
-        _: Self::Args
-    ) -> Result<Self::Ret, Self::Error> {
+    fn invoke(services: &'a BTreeMap<Key, RwLock<Box<Base>>>) -> Result<Self::Ret, Self::Error> {
         let key = Svc::key();
         let service = match services.get(key) {
             Some(r) => r, 
@@ -184,19 +168,15 @@ where
     Key: ServiceKey, 
     Base: Downcast<Obj::Factory>,
 {
-    type Args = <Obj::Factory as Factory<Obj>>::Args;
     type Ret = Obj;
     type Error = CreationError<'a,
         <Obj::Factory as ServiceReflect>::Key, 
         <Obj::Factory as Factory<Obj>>::Error
     >;
 
-    fn invoke(
-        services: &'a BTreeMap<Key, RwLock<Box<Base>>>, 
-        args: Self::Args
-    ) -> Result<Self::Ret, Self::Error> {
-        let mut factory = try!{Write::<Obj::Factory>::invoke(services, ())};
-        match factory.create(args){
+    fn invoke(services: &'a BTreeMap<Key, RwLock<Box<Base>>>) -> Result<Self::Ret, Self::Error> {
+        let mut factory = try!{Write::<Obj::Factory>::invoke(services)};
+        match factory.create(){
             Ok(r) => Ok(r), 
             Err(err) => Err(CreationError::CreationError{ 
                 key: <Obj::Factory as ServiceReflect>::key(),
@@ -217,14 +197,10 @@ pub struct ReadAll(());
 impl<'a, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for ReadAll 
     where Key: ServiceKey + 'a, Base: Any
 {
-    type Args = ();
     type Ret = ReadGuardMap<'a, Key, Base>;
     type Error = LockError<'a, Key>;
 
-    fn invoke(
-        services: &'a BTreeMap<Key, RwLock<Box<Base>>>,
-        _: Self::Args
-    ) -> Result<Self::Ret, Self::Error> {
+    fn invoke(services: &'a BTreeMap<Key, RwLock<Box<Base>>>) -> Result<Self::Ret, Self::Error> {
         let mut map = ReadGuardMap::new();
         for (key, service) in services.iter() {
             let guard = match service.read() {
@@ -247,14 +223,10 @@ pub struct WriteAll(());
 impl<'a, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for WriteAll 
     where Key: ServiceKey + 'a, Base: Any
 {
-    type Args = ();
     type Ret = WriteGuardMap<'a, Key, Base>;
     type Error = LockError<'a, Key>;
 
-    fn invoke(
-        services: &'a BTreeMap<Key, RwLock<Box<Base>>>,
-        _: Self::Args
-    ) -> Result<Self::Ret, Self::Error> {
+    fn invoke(services: &'a BTreeMap<Key, RwLock<Box<Base>>>) -> Result<Self::Ret, Self::Error> {
         let mut map = WriteGuardMap::new();
         for (key, service) in services.iter() {
             let guard = match service.write() {
@@ -268,10 +240,6 @@ impl<'a, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for WriteAll
 
 // ++++++++++++++++++++ multi ++++++++++++++++++++
 
-macro_rules! e {
-    ($e:expr) => { $e };
-}
-
 macro_rules! multi_methods {
     ($($err:ident {$($params:ident: $fields:tt)+})+) => {$(
         
@@ -283,16 +251,12 @@ macro_rules! multi_methods {
         impl<'a, $($params),+, Key, Base: ?Sized> InvocationMethod<'a, Key, Base> for ($($params,)+) 
             where $($params: InvocationMethod<'a, Key, Base>),+, Key: ServiceKey, Base: Any
         {
-            type Args = ($($params::Args,)+);
             type Ret = ($($params::Ret,)+);
             type Error = $err<$($params::Error),+>;
 
-            fn invoke(
-                services: &'a BTreeMap<Key, RwLock<Box<Base>>>, 
-                args: Self::Args
-            ) -> Result<Self::Ret, Self::Error> {
+            fn invoke(services: &'a BTreeMap<Key, RwLock<Box<Base>>>) -> Result<Self::Ret, Self::Error> {
                 Ok(($(
-                    match $params::invoke(services, e![args.$fields]){
+                    match $params::invoke(services){
                         Ok(r) => r, Err(r) => return Err($err::$params(r))
                     }
                 ,)+))

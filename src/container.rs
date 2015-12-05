@@ -27,51 +27,48 @@ impl<Key, Base: ?Sized> Container<Key, Base>
         }
     }
 
-    pub fn invoke<'a, M>(&'a self, args: M::Args) -> Result<M::Ret, M::Error>
+    pub fn invoke<'a, M>(&'a self) -> Result<M::Ret, M::Error>
         where M: InvocationMethod<'a, Key, Base>, 
     {
         // in order to prevent AB-BA deadlocks, we aquire a mutex before letting 
         // the InvocationMethod do it's thing.
         let _ = self.deadlock_prevention.lock();
 
-        M::invoke(&self.services, args)
+        M::invoke(&self.services)
     }
 
     /// Shortcut for `.invoke::<ioc::Read<{Svc}>>(())`.
     pub fn read<Svc>(&self) -> Result<ReadGuard<Svc, Base>, LockError<Svc::Key>>
         where Svc: ServiceReflect<Key = Key>, Base: Downcast<Svc>
     {
-        self.invoke::<Read<Svc>>(())
+        self.invoke::<Read<Svc>>()
     }
 
     /// Shortcut for `.invoke::<ioc::Write<{Svc}>>(())`.
     pub fn write<Svc>(&self) -> Result<WriteGuard<Svc, Base>, LockError<Svc::Key>>
         where Svc: ServiceReflect<Key = Key>, Base: Downcast<Svc>
     {
-        self.invoke::<Write<Svc>>(())
+        self.invoke::<Write<Svc>>()
     }
 
     /// Shortcut for `.invoke::<ioc::Create<{Obj}>>(args)`.
-    pub fn create<Obj>(
-        &self, 
-        args: <Obj::Factory as Factory<Obj>>::Args,
-    ) -> Result<Obj, CreationError<<Obj::Factory as ServiceReflect>::Key, <Obj::Factory as Factory<Obj>>::Error>>  
+    pub fn create<Obj>(&self) -> Result<Obj, CreationError<<Obj::Factory as ServiceReflect>::Key, <Obj::Factory as Factory<Obj>>::Error>>  
     where 
         Obj: FactoryObject, 
         Obj::Factory: ServiceReflect<Key = Key>, 
         Base: Downcast<Obj::Factory>,
     {
-        self.invoke::<Create<Obj>>(args)
+        self.invoke::<Create<Obj>>()
     }
 
     /// Shortcut for `.invoke::<ioc::ReadAll>(())`.
     pub fn read_all(&self) -> Result<ReadGuardMap<Key, Base>, LockError<Key>> {
-        self.invoke::<ReadAll>(())
+        self.invoke::<ReadAll>()
     }
 
     /// Shortcut for `.invoke::<ioc::WriteAll>(())`.
     pub fn write_all(&self) -> Result<WriteGuardMap<Key, Base>, LockError<Key>> {
-        self.invoke::<WriteAll>(())
+        self.invoke::<WriteAll>()
     }
 }
 

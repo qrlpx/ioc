@@ -6,19 +6,15 @@ pub trait FactoryObject: Any + Sized {
 }
 
 pub trait Factory<Obj: FactoryObject> {
-    type Args;
     type Error: Debug;
-
-    fn create(&mut self, args: Self::Args) -> Result<Obj, Self::Error>;
+    fn create(&mut self) -> Result<Obj, Self::Error>;
 }
 
 impl<Obj, T: ?Sized> Factory<Obj> for Box<T>
     where Obj: FactoryObject, T: Factory<Obj>
 {
-    type Args = T::Args;
     type Error = T::Error;
-
-    fn create(&mut self, args: Self::Args) -> Result<Obj, Self::Error> {
-        (**self).create(args)
+    fn create(&mut self) -> Result<Obj, Self::Error> {
+        (**self).create()
     }
 }
