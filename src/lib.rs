@@ -1,21 +1,28 @@
 //! ### TODO
 //!
 //! * impl {Error, Display} for errors?
-
-#![feature(get_type_id)] 
 #![feature(associated_type_defaults)] 
+#![feature(reflect_marker)]
+#![feature(core_intrinsics)]
+#![feature(box_syntax)]
 
 #[macro_use] extern crate downcast;
 
-mod service;
+mod reflect;
+mod methods;
+mod guards;
+mod errors;
 mod factory;
-mod invocation_method;
 mod container;
+mod pipeline;
 
-pub use service::*;
+pub use reflect::*;
+pub use methods::*;
+pub use guards::*;
+pub use errors::*;
 pub use factory::*;
-pub use invocation_method::*;
 pub use container::*;
+pub use pipeline::*;
 
 /// Alias for `Read`.
 pub use Read as R;
