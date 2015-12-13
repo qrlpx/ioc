@@ -30,23 +30,23 @@ impl<Key, Base: ?Sized, Obj, T> FactoryBase<Key, Base, Obj> for T
 }*/
 
 pub trait Factory<'a, Cont, Obj> {
-    type Args: Method<'a, Cont>;
-    type ArgsRet = <Self::Args as Method<'a, Cont>>::Ret;
+    type ArgSelection: Method<'a, Cont>;
+    type Args = <Self::ArgSelection as Method<'a, Cont>>::Ret;
 
     type Error: Error;
 
-    fn create(&self, args: <Self::Args as Method<'a, Cont>>::Ret) -> Result<Obj, Self::Error>;
+    fn create(&self, args: <Self::ArgSelection as Method<'a, Cont>>::Ret) -> Result<Obj, Self::Error>;
 
 }
 
 impl<'a, Cont, Obj, T> Factory<'a, Cont, Obj> for T
     where Obj: FactoryObject, T: Deref, T::Target: Factory<'a, Cont, Obj>
 {
-    type Args = <T::Target as Factory<'a, Cont, Obj>>::Args;
+    type ArgSelection = <T::Target as Factory<'a, Cont, Obj>>::ArgSelection;
 
     type Error = <T::Target as Factory<'a, Cont, Obj>>::Error;
 
-    fn create(&self, args: <Self::Args as Method<'a, Cont>>::Ret) -> Result<Obj, Self::Error> {
+    fn create(&self, args: <Self::ArgSelection as Method<'a, Cont>>::Ret) -> Result<Obj, Self::Error> {
         (**self).create(args)
     }
 }

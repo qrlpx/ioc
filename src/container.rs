@@ -181,7 +181,7 @@ where
         let factory = try!{Read::<Obj::Factory>::invoke(ioc)};
         
         let key = <Obj::Factory as reflect::Object>::key();
-        let args = match <<Obj::Factory as Factory<'a, _, _>>::Args as Method<'a, _>>::invoke(ioc) {
+        let args = match <<Obj::Factory as Factory<'a, _, _>>::ArgSelection as Method<'a, _>>::invoke(ioc) {
             Ok(args) => args,
             Err(err) => return Err(CreationError::DependencyError{ key: key, error: box err })
         };
