@@ -1,20 +1,142 @@
-use guards::*;
-use errors::*;
-use factory::*;
-use methods::*;
+use errors::Error;
+use guards::{ReadGuard, WriteGuard};
+use factory::FactoryBase;
+use methods::Method;
 use reflect;
 
 use downcast::Downcast;
 
 use std::any::Any;
-use std::borrow::Borrow;
-use std::collections::{btree_map, BTreeMap};
-use std::sync::{Mutex, RwLock};
+use std::collections::BTreeMap;
+use std::ops::{Deref, DerefMut};
 
 fn type_name<T: ::std::marker::Reflect>() -> &'static str {
     unsafe { ::std::intrinsics::type_name::<T>() }
 }
 
+pub trait Container<'a>: Any + Sized {
+    type Key: reflect::Key;
+    type ServiceBase: ?Sized + Any;
+
+    type ReadGuardBase: Deref<Target = Box<Self::ServiceBase>> + 'a;
+    type WriteGuardBase: DerefMut<Target = Box<Self::ServiceBase>> + 'a;
+
+    fn read_service_base(
+        &'a self, 
+        key: &'a Self::Key
+    ) -> Result<Self::ReadGuardBase, Error<'a, Self::Key>>;
+
+    fn write_service_base(
+        &'a self, 
+        key: &'a Self::Key
+    ) -> Result<Self::WriteGuardBase, Error<'a, Self::Key>>;
+
+    fn read_service<Svc>(
+        &'a self, 
+        key: &'a Self::Key
+    ) -> Result<ReadGuard<Svc, Self::ServiceBase, Self::ReadGuardBase>, Error<'a, Self::Key>>
+        where Svc: Any, Self::ServiceBase: Downcast<Svc>
+    {
+        let base = try!{self.read_service_base(key)};
+        if !base.is_type() {
+            return Err(Error::MismatchedType{ 
+                key: key, 
+                expected: type_name::<Svc>(),
+                found: type_name::<Svc>(),
+            })
+        };
+        Ok(ReadGuard::new(base))
+    }
+
+    fn write_service<Svc>(
+        &'a self, 
+        key: &'a Self::Key
+    ) -> Result<WriteGuard<Svc, Self::ServiceBase, Self::WriteGuardBase>, Error<'a, Self::Key>>
+        where Svc: Any, Self::ServiceBase: Downcast<Svc>
+    {
+        let base = try!{self.write_service_base(key)};
+        if !base.is_type() {
+            return Err(Error::MismatchedType{ 
+                key: key, 
+                expected: type_name::<Svc>(),
+                found: type_name::<Svc>(),
+            })
+        };
+        Ok(WriteGuard::new(base))
+    }
+
+    fn read<Svc>(
+        &'a self
+    ) -> Result<ReadGuard<Svc, Self::ServiceBase, Self::ReadGuardBase>, Error<'a, Self::Key>>
+        where Svc: reflect::Service<Key = Self::Key>, Self::ServiceBase: Downcast<Svc>
+    {
+        self.read_service(Svc::key())
+    }
+
+    fn write<Svc>(
+        &'a self
+    ) -> Result<WriteGuard<Svc, Self::ServiceBase, Self::WriteGuardBase>, Error<'a, Self::Key>>
+        where Svc: reflect::Service<Key = Self::Key>, Self::ServiceBase: Downcast<Svc>
+    {
+        self.write_service(Svc::key())
+    }
+
+    fn read_all(
+        &'a self, 
+    ) -> Result<BTreeMap<&'a Self::Key, Self::ReadGuardBase>, Error<'a, Self::Key>>;
+
+    fn write_all(
+        &'a self, 
+    ) -> Result<BTreeMap<&'a Self::Key, Self::WriteGuardBase>, Error<'a, Self::Key>>;
+
+    fn create_factory_object<Obj, Svc>(
+        &'a self,
+        key: &'a Self::Key
+    ) -> Result<Obj, Error<'a, Self::Key>>
+        where Svc: FactoryBase<'a, Self, Obj>, Self::ServiceBase: Downcast<Svc>
+    {
+        let factory = try!{self.read_service::<Svc>(key)};
+        factory.create(key, self)
+    }
+
+    fn create<Obj>(&'a self) -> Result<Obj, Error<'a, Self::Key>>
+    where 
+        Obj: reflect::FactoryObject<Key = Self::Key>,
+        Obj::Factory: FactoryBase<'a, Self, Obj>, 
+        Self::ServiceBase: Downcast<Obj::Factory>
+    {
+        let key = <Obj::Factory as reflect::Service>::key();
+        self.create_factory_object::<Obj, Obj::Factory>(key)
+    }
+
+    fn invoke<M>(&'a self) -> Result<M::Ret, Error<'a, Self::Key>>
+        where M: Method<'a, Self>
+    {
+        M::invoke(self)
+    }
+}
+
+/* TODO
+pub trait StagedContainer<'a>: Container<'a> {
+    type Stage: Container<'a>;
+
+    fn get_stage<St>(&self) -> Option<&Self::Stage>
+        where St: reflect::Service<Key = Self::Key>;
+    
+    fn read_stage<St>(
+        &'a self,
+    ) -> Result<BTreeMap<&'a Self::Key, Self::ReadGuardBase>, Error<'a, Self::Key>> 
+        where St: reflect::Service<Key = Self::Key>;
+
+    fn write_stage<St>(
+        &'a self,
+    ) -> Result<BTreeMap<&'a Self::Key, Self::WriteGuardBase>, Error<'a, Self::Key>> 
+        where St: reflect::Service<Key = Self::Key>;
+}*/
+
+// ++++++++++++++++++++ methods ++++++++++++++++++++
+// TODO move this somewhere else?
+/*
 // ++++++++++++++++++++ Container ++++++++++++++++++++
 
 pub struct Container<Key, Base: ?Sized> {
@@ -169,26 +291,18 @@ where
     Key: reflect::Key, 
     Base: Any + Downcast<Obj::Factory>,
     Obj: FactoryObject<Key = Key> + 'a, 
-    Obj::Factory: Factory<'a, Container<Key, Base>, Obj>
+    Obj::Factory: FactoryBase<'a, Container<Key, Base>, Obj>
 {
     type Ret = Obj;
     type Error = CreationError<'a, 
         <Obj::Factory as reflect::Object>::Key, 
-        <Obj::Factory as Factory<'a, Container<Key, Base>, Obj>>::Error
+        <Obj::Factory as FactoryBase<'a, Container<Key, Base>, Obj>>::Error
     >;
 
     fn invoke(ioc: &'a Container<Key, Base>) -> Result<Self::Ret, Self::Error> {
         let factory = try!{Read::<Obj::Factory>::invoke(ioc)};
         
-        let key = <Obj::Factory as reflect::Object>::key();
-        let args = match <<Obj::Factory as Factory<'a, _, _>>::ArgSelection as Method<'a, _>>::invoke(ioc) {
-            Ok(args) => args,
-            Err(err) => return Err(CreationError::DependencyError{ key: key, error: box err })
-        };
-        match factory.create(args){
-            Ok(r) => Ok(r), 
-            Err(err) => Err(CreationError::CreationError{ key: key, error: err })
-        }
+        factory.create(ioc)
     }
 }
 
@@ -220,10 +334,10 @@ impl<Key, Base: ?Sized> Container<Key, Base>
     }
 
     /// Shortcut for `.invoke::<ioc::Create<{Obj}>>(args)`.
-    pub fn create<'a, Obj>(&'a self) -> Result<Obj, CreationError<<Obj::Factory as reflect::Object>::Key, <Obj::Factory as Factory<'a, Self, Obj>>::Error>>  
+    pub fn create<'a, Obj>(&'a self) -> Result<Obj, CreationError<<Obj::Factory as reflect::Object>::Key, <Obj::Factory as FactoryBase<'a, Self, Obj>>::Error>>  
     where 
         Obj: FactoryObject<Key = Key> + 'a,
-        Obj::Factory: Factory<'a, Self, Obj>,
+        Obj::Factory: FactoryBase<'a, Self, Obj>,
         Base: Downcast<Obj::Factory>,
     {
         self.invoke::<Create<Obj>>()
@@ -266,4 +380,4 @@ impl<Key, Base: ?Sized> Default for ContainerBuilder<Key, Base>
 {
     fn default() -> Self { Self::new() }
 }
-
+*/

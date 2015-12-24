@@ -1,52 +1,99 @@
-use std::error::Error;
+use errors::Error;
+use guards::{ReadGuard, WriteGuard};
+use factory::FactoryBase;
+use container::Container;
+use reflect;
+
+use downcast::Downcast;
+
+use std::collections::BTreeMap;
 
 // ++++++++++++++++++++ Method ++++++++++++++++++++
 
-pub trait Method<'a, Cont> {
+pub trait Method<'a, Cont>
+    where Cont: Container<'a>
+{
     type Ret;
-    type Error: Error;
-    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Self::Error>;
+    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>>;
 }
-
-// ++++++++++++++++++++ method-types ++++++++++++++++++++
 
 pub struct Read<Svc>(Svc);
 
-pub struct Write<Svc>(Svc);
+impl<'a, Cont, Svc> Method<'a, Cont> for Read<Svc>
+where 
+    Svc: reflect::Service<Key = Cont::Key>,
+    Cont: Container<'a>,
+    Cont::ServiceBase: Downcast<Svc>,
+{
+    type Ret = ReadGuard<Svc, Cont::ServiceBase, Cont::ReadGuardBase>;
+    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+        ioc.read::<Svc>()
+    }
+}
+
+pub struct Write<Svc>(fn(Svc));
+
+impl<'a, Cont, Svc> Method<'a, Cont> for Write<Svc>
+where 
+    Svc: reflect::Service<Key = Cont::Key>,
+    Cont: Container<'a>,
+    Cont::ServiceBase: Downcast<Svc>,
+{
+    type Ret = WriteGuard<Svc, Cont::ServiceBase, Cont::WriteGuardBase>;
+    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+        ioc.write::<Svc>()
+    }
+}
 
 pub struct ReadAll(());
 
+impl<'a, Cont> Method<'a, Cont> for ReadAll
+    where Cont: Container<'a>,
+{
+    type Ret = BTreeMap<&'a Cont::Key, Cont::ReadGuardBase>;
+    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+        ioc.read_all()
+    }
+}
+
 pub struct WriteAll(());
 
-pub struct Create<Obj>(Obj);
+impl<'a, Cont> Method<'a, Cont> for WriteAll
+    where Cont: Container<'a>,
+{
+    type Ret = BTreeMap<&'a Cont::Key, Cont::WriteGuardBase>;
+    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+        ioc.write_all()
+    }
+}
 
-pub struct ReadStage<St>(St);
+pub struct Create<Obj>(fn(Obj));
 
-pub struct WriteStage<St>(St);
-
-// ++++++++++++++++++++ multi-methods ++++++++++++++++++++
-
-use errors::MultiError;
+impl<'a, Cont, Obj> Method<'a, Cont> for Create<Obj>
+where 
+    Obj: reflect::FactoryObject<Key = Cont::Key>,
+    Obj::Factory: FactoryBase<'a, Cont, Obj>,
+    Cont: Container<'a>,
+    Cont::ServiceBase: Downcast<Obj::Factory>,
+{
+    type Ret = Obj;
+    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+        ioc.create::<Obj>()
+    }
+}
 
 macro_rules! multi_methods {
     ($({$($params:ident: $fields:tt)+})+) => {$(
         
+        #[allow(unused_assignments)] // FIXME `idx` get's falsely reported.
         impl<'a, Cont, $($params),+> Method<'a, Cont> for ($($params,)+) 
-            where $($params: Method<'a, Cont> + 'a),+, 
+            where Cont: Container<'a>, $($params: Method<'a, Cont> + 'a),+, 
         {
             type Ret = ($($params::Ret,)+);
-            type Error = MultiError<'a>;
 
-            fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Self::Error> {
-                let mut idx = 0;
+            fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
                 Ok(($(
-                    match $params::invoke(ioc) {
-                        Ok(r) => { idx += 1; r }
-                        Err(err) => return Err(MultiError{ 
-                            idx: idx, 
-                            error: Box::new(err)
-                        })
-                    }
+                    try!{$params::invoke(ioc)}
                 ,)+))
             }
         }

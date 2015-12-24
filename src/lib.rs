@@ -1,6 +1,3 @@
-//! ### TODO
-//!
-//! * impl {Error, Display} for errors?
 #![feature(associated_type_defaults)] 
 #![feature(reflect_marker)]
 #![feature(core_intrinsics)]
@@ -9,20 +6,22 @@
 #[macro_use] extern crate downcast;
 
 mod reflect;
-mod methods;
-mod guards;
 mod errors;
+mod guards;
 mod factory;
+mod methods;
 mod container;
-mod pipeline;
+mod ioc;
+mod staged_ioc;
 
 pub use reflect::*;
-pub use methods::*;
-pub use guards::*;
 pub use errors::*;
+pub use guards::*;
 pub use factory::*;
+pub use methods::*;
 pub use container::*;
-pub use pipeline::*;
+pub use ioc::*;
+pub use staged_ioc::*;
 
 /// Alias for `Read`.
 pub use Read as R;
@@ -30,6 +29,7 @@ pub use Read as R;
 /// Alias for `Write`.
 pub use Write as W;
 
+// NOTE old code
 // TODO move this into tests/examples
 /*#[macro_use] 
 extern crate lazy_static;
