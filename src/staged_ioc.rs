@@ -1,5 +1,5 @@
 use errors::Error;
-use container::Container;
+use container::{Container, StagedContainer};
 use ioc::Ioc;
 use reflect;
 
@@ -15,10 +15,6 @@ pub struct StagedIoc<Key, SvcLock> {
     stages: Vec<(Key, Ioc<Key, SvcLock>)>,
 }
 
-pub type Stages<'a, Key, SvcLock> = iter::Map<
-    slice::Iter<'a, (Key, Ioc<Key, SvcLock>)>, 
-    fn(&'a (Key, Ioc<Key, SvcLock>)) -> (&'a Key, &'a Ioc<Key, SvcLock>)
->;
 
 impl<Key, SvcLock> StagedIoc<Key, SvcLock> 
     where Key: reflect::Key
@@ -60,14 +56,6 @@ impl<Key, SvcLock> StagedIoc<Key, SvcLock>
         false
     }
 
-    pub fn stages(&self) -> Stages<Key, SvcLock> {
-        fn map_fn<'a, A, B>(pair: &'a (A, B)) -> (&'a A, &'a B) {
-            (&pair.0, &pair.1)
-        } 
-
-        self.stages.iter().map(map_fn)
-    }
-
     pub fn get_stage(&self, key: &Key) -> Option<&Ioc<Key, SvcLock>> {
         for &(ref k, ref stage) in &self.stages {
             if k == key { return Some(stage); }
@@ -94,6 +82,9 @@ impl<'a, Key, SvcBase: ?Sized> Container<'a> for StagedIoc<Key, RwLock<Box<SvcBa
 
     type ReadGuardBase = RwLockReadGuard<'a, Box<SvcBase>>;
     type WriteGuardBase = RwLockWriteGuard<'a, Box<SvcBase>>;
+
+    //type ReadGuardMap
+    //type WriteGuardMap
 
     fn read_service_base(
         &'a self, 
@@ -125,7 +116,7 @@ impl<'a, Key, SvcBase: ?Sized> Container<'a> for StagedIoc<Key, RwLock<Box<SvcBa
         &'a self, 
     ) -> Result<BTreeMap<&'a Self::Key, Self::ReadGuardBase>, Error<'a, Self::Key>> {
         let mut ret = BTreeMap::new();
-        for (_, stage) in self.stages() {
+        for &(_, ref stage) in &self.stages {
             for (key, _) in stage.services() {
                 ret.insert(key, try!{self.read_service_base(key)});
             }
@@ -137,7 +128,7 @@ impl<'a, Key, SvcBase: ?Sized> Container<'a> for StagedIoc<Key, RwLock<Box<SvcBa
         &'a self, 
     ) -> Result<BTreeMap<&'a Self::Key, Self::WriteGuardBase>, Error<'a, Self::Key>> {
         let mut ret = BTreeMap::new();
-        for (_, stage) in self.stages() {
+        for &(_, ref stage) in &self.stages {
             for (key, _) in stage.services() {
                 ret.insert(key, try!{self.write_service_base(key)});
             }
@@ -179,7 +170,7 @@ impl<'a, Key, SvcBase: ?Sized> Container<'a> for StagedIoc<Key, RefCell<Box<SvcB
         &'a self, 
     ) -> Result<BTreeMap<&'a Self::Key, Self::ReadGuardBase>, Error<'a, Self::Key>> {
         let mut ret = BTreeMap::new();
-        for (_, stage) in self.stages() {
+        for &(_, ref stage) in &self.stages {
             for (key, _) in stage.services() {
                 ret.insert(key, try!{self.read_service_base(key)});
             }
@@ -191,12 +182,49 @@ impl<'a, Key, SvcBase: ?Sized> Container<'a> for StagedIoc<Key, RefCell<Box<SvcB
         &'a self, 
     ) -> Result<BTreeMap<&'a Self::Key, Self::WriteGuardBase>, Error<'a, Self::Key>> {
         let mut ret = BTreeMap::new();
-        for (_, stage) in self.stages() {
+        for &(_, ref stage) in &self.stages {
             for (key, _) in stage.services() {
                 ret.insert(key, try!{self.write_service_base(key)});
             }
         }
         Ok(ret)
+    }
+}
+
+pub type StageIter<'a, Key, SvcLock> = iter::Map<
+    slice::Iter<'a, (Key, Ioc<Key, SvcLock>)>, 
+    fn(&'a (Key, Ioc<Key, SvcLock>)) -> (&'a Key, &'a Ioc<Key, SvcLock>)
+>;
+
+impl<'a, Key, SvcBase: ?Sized> StagedContainer<'a> for StagedIoc<Key, RwLock<Box<SvcBase>>> 
+    where Key: reflect::Key, SvcBase: Any
+{
+    type Stage = Ioc<Key, RwLock<Box<SvcBase>>>;
+
+    type StageIter = StageIter<'a, Key, RwLock<Box<SvcBase>>>;
+
+    fn stages(&'a self) -> Self::StageIter {
+        fn map_fn<'a, A, B>(pair: &'a (A, B)) -> (&'a A, &'a B) {
+            (&pair.0, &pair.1)
+        } 
+
+        self.stages.iter().map(map_fn)
+    }
+}
+
+impl<'a, Key, SvcBase: ?Sized> StagedContainer<'a> for StagedIoc<Key, RefCell<Box<SvcBase>>> 
+    where Key: reflect::Key, SvcBase: Any
+{
+    type Stage = Ioc<Key, RefCell<Box<SvcBase>>>;
+
+    type StageIter = StageIter<'a, Key, RefCell<Box<SvcBase>>>;
+
+    fn stages(&'a self) -> Self::StageIter {
+        fn map_fn<'a, A, B>(pair: &'a (A, B)) -> (&'a A, &'a B) {
+            (&pair.0, &pair.1)
+        } 
+
+        self.stages.iter().map(map_fn)
     }
 }
 
@@ -276,17 +304,17 @@ impl<Key, SvcLock> StagedIocBuilder<Key, SvcLock>
     }
 
     pub fn register_stage_at_end(&mut self, stage: Key){
-        let len = self.ioc.stages().len();
+        let len = self.ioc.stages.len();
         self.ioc.register_stage(len, stage);
     }
 
     pub fn register_stage_before(&mut self, pos_stage: &Key, stage: Key){
-        let pos = self.ioc.stages().position(|(key, _)| key == pos_stage).unwrap();
+        let pos = self.ioc.stages.iter().position(|&(ref key, _)| key == pos_stage).unwrap();
         self.ioc.register_stage(pos, stage);
     }
 
     pub fn register_stage_after(&mut self, pos_stage: &Key, stage: Key){
-        let pos = self.ioc.stages().position(|(key, _)| key == pos_stage).unwrap();
+        let pos = self.ioc.stages.iter().position(|&(ref key, _)| key == pos_stage).unwrap();
         self.ioc.register_stage(pos + 1, stage);
     }
 

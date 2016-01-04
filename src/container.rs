@@ -91,12 +91,12 @@ pub trait Container<'a>: Any + Sized {
 
     fn create_factory_object<Obj, Svc>(
         &'a self,
-        key: &'a Self::Key
+        svc: &'a Self::Key
     ) -> Result<Obj, Error<'a, Self::Key>>
         where Svc: FactoryBase<'a, Self, Obj>, Self::ServiceBase: Downcast<Svc>
     {
-        let factory = try!{self.read_service::<Svc>(key)};
-        factory.create(key, self)
+        let factory = try!{self.read_service::<Svc>(svc)};
+        factory.create(svc, self)
     }
 
     fn create<Obj>(&'a self) -> Result<Obj, Error<'a, Self::Key>>
@@ -116,10 +116,10 @@ pub trait Container<'a>: Any + Sized {
     }
 }
 
-/* TODO
 pub trait StagedContainer<'a>: Container<'a> {
     type Stage: Container<'a>;
 
+    /* TODO
     fn get_stage<St>(&self) -> Option<&Self::Stage>
         where St: reflect::Service<Key = Self::Key>;
     
@@ -131,8 +131,12 @@ pub trait StagedContainer<'a>: Container<'a> {
     fn write_stage<St>(
         &'a self,
     ) -> Result<BTreeMap<&'a Self::Key, Self::WriteGuardBase>, Error<'a, Self::Key>> 
-        where St: reflect::Service<Key = Self::Key>;
-}*/
+        where St: reflect::Service<Key = Self::Key>;*/
+
+    type StageIter: Iterator<Item = (&'a Self::Key, &'a Self::Stage)> + 'a;
+
+    fn stages(&'a self) -> Self::StageIter;
+}
 
 // ++++++++++++++++++++ methods ++++++++++++++++++++
 // TODO move this somewhere else?
