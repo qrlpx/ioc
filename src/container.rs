@@ -117,7 +117,7 @@ pub trait Container<'a>: Any + Sized {
 }
 
 pub trait StagedContainer<'a>: Container<'a> {
-    type Stage: Container<'a>;
+    type Stage: Container<'a, Key = Self::Key, ServiceBase = Self::ServiceBase>;
 
     /* TODO
     fn get_stage<St>(&self) -> Option<&Self::Stage>
