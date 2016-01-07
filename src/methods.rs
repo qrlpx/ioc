@@ -17,7 +17,18 @@ pub trait Method<'a, Cont>
     fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>>;
 }
 
-// ++++++++++++++++++++ Method ++++++++++++++++++++
+// ++++++++++++++++++++ dummy ++++++++++++++++++++
+
+impl<'a, Cont> Method<'a, Cont> for ()
+    where Cont: Container<'a>
+{
+    type Ret = ();
+    fn invoke(_: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+        Ok(())
+    }
+}
+
+// ++++++++++++++++++++ Read ++++++++++++++++++++
 
 pub struct Read<Svc>(Svc);
 
@@ -52,7 +63,7 @@ macro_rules! multi_read {
 }
 
 
-// ++++++++++++++++++++ Method ++++++++++++++++++++
+// ++++++++++++++++++++ Write ++++++++++++++++++++
 
 pub struct Write<Svc>(fn(Svc));
 
@@ -86,7 +97,33 @@ macro_rules! multi_write {
     )+}
 }
 
-// ++++++++++++++++++++ Method ++++++++++++++++++++
+// ++++++++++++++++++++ ReadAll ++++++++++++++++++++
+
+pub struct ReadAll(());
+
+impl<'a, Cont> Method<'a, Cont> for ReadAll
+    where Cont: Container<'a>,
+{
+    type Ret = BTreeMap<&'a Cont::Key, Cont::ReadGuardBase>;
+    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+        ioc.read_all()
+    }
+}
+
+// ++++++++++++++++++++ WriteAll ++++++++++++++++++++
+
+pub struct WriteAll(());
+
+impl<'a, Cont> Method<'a, Cont> for WriteAll
+    where Cont: Container<'a>,
+{
+    type Ret = BTreeMap<&'a Cont::Key, Cont::WriteGuardBase>;
+    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+        ioc.write_all()
+    }
+}
+
+// ++++++++++++++++++++ Create ++++++++++++++++++++
 
 pub struct Create<Obj>(fn(Obj));
 
@@ -120,32 +157,6 @@ macro_rules! multi_create {
             }
         }
     )+}
-}
-
-// ++++++++++++++++++++ Method ++++++++++++++++++++
-
-pub struct ReadAll(());
-
-impl<'a, Cont> Method<'a, Cont> for ReadAll
-    where Cont: Container<'a>,
-{
-    type Ret = BTreeMap<&'a Cont::Key, Cont::ReadGuardBase>;
-    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
-        ioc.read_all()
-    }
-}
-
-// ++++++++++++++++++++ Method ++++++++++++++++++++
-
-pub struct WriteAll(());
-
-impl<'a, Cont> Method<'a, Cont> for WriteAll
-    where Cont: Container<'a>,
-{
-    type Ret = BTreeMap<&'a Cont::Key, Cont::WriteGuardBase>;
-    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
-        ioc.write_all()
-    }
 }
 
 // ++++++++++++++++++++ multi-method ++++++++++++++++++++
