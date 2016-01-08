@@ -32,20 +32,20 @@ pub trait Factory<'a, Cont, Obj>: Any
 /// 
 /// FIXME: Remove (and replace) this as soon as partial-impls are available.
 #[macro_export]
-macro_rules! ioc_autoimpl_factory_base {
+macro_rules! qioc_autoimpl_factory_base {
     ($ty:ty, $cont:ty, $obj:ty) => {
-        impl<'a> ::ioc::FactoryBase<'a, $cont, $obj> for $ty {
+        impl<'a> ::qioc::FactoryBase<'a, $cont, $obj> for $ty {
             fn create(
                 &self, 
-                self_key: &'a <$cont as ::ioc::Container<'a>>::Key, 
+                self_key: &'a <$cont as ::qioc::Container<'a>>::Key, 
                 ioc: &'a $cont
-            ) -> Result<$obj, ::ioc::Error<'a, <$cont as ::ioc::Container<'a>>::Key>> {
+            ) -> Result<$obj, ::qioc::Error<'a, <$cont as ::ioc::Container<'a>>::Key>> {
                 // TODO use try!
-                let args = <<Self as ::ioc::Factory<'a, $cont, $obj>>::ArgSelection as ::ioc::Method<_>>::invoke(ioc).unwrap();
+                let args = <<Self as ::qioc::Factory<'a, $cont, $obj>>::ArgSelection as ::qioc::Method<_>>::invoke(ioc).unwrap();
 
-                match ::ioc::Factory::create(self, args) {
+                match ::qioc::Factory::create(self, args) {
                     Ok(r) => Ok(r),
-                    Err(err) => Err(::ioc::Error::CreationError{ 
+                    Err(err) => Err(::qioc::Error::CreationError{ 
                         key: self_key,
                         error: Box::new(err)
                     })
