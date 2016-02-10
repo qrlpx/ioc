@@ -6,7 +6,7 @@
 #[macro_use] extern crate downcast;
 
 mod reflect;
-mod errors;
+mod error;
 mod guards;
 mod factory;
 mod methods;
@@ -15,7 +15,7 @@ mod ioc;
 mod staged_ioc;
 
 pub use reflect::*;
-pub use errors::*;
+pub use error::*;
 pub use guards::*;
 pub use factory::*;
 pub use methods::*;

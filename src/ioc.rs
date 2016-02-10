@@ -1,4 +1,4 @@
-use errors::Error;
+use error::Error;
 use container::Container;
 use reflect;
 

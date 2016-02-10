@@ -1,4 +1,4 @@
-use errors::Error;
+use error::Error;
 use guards::{ReadGuard, WriteGuard};
 use factory::FactoryBase;
 use container::Container;
@@ -14,7 +14,7 @@ pub trait Method<'a, Cont>
     where Cont: Container<'a>
 {
     type Ret;
-    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>>;
+    fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>>;
 }
 
 // ++++++++++++++++++++ dummy ++++++++++++++++++++
@@ -23,7 +23,7 @@ impl<'a, Cont> Method<'a, Cont> for ()
     where Cont: Container<'a>
 {
     type Ret = ();
-    fn invoke(_: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+    fn resolve(_: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
         Ok(())
     }
 }
@@ -39,7 +39,7 @@ where
     Cont::ServiceBase: Downcast<Svc>,
 {
     type Ret = ReadGuard<Svc, Cont::ServiceBase, Cont::ReadGuardBase>;
-    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+    fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
         ioc.read::<Svc>()
     }
 }
@@ -53,7 +53,7 @@ macro_rules! multi_read {
             $(Cont::ServiceBase: Downcast<$params>),+
         {
             type Ret = ($(<Read<$params> as Method<'a, Cont>>::Ret,)+);
-            fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+            fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
                 Ok((
                     $(try!{ioc.read::<$params>()},)+
                 ))
@@ -61,7 +61,6 @@ macro_rules! multi_read {
         }
     )+}
 }
-
 
 // ++++++++++++++++++++ Write ++++++++++++++++++++
 
@@ -74,7 +73,7 @@ where
     Cont::ServiceBase: Downcast<Svc>,
 {
     type Ret = WriteGuard<Svc, Cont::ServiceBase, Cont::WriteGuardBase>;
-    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+    fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
         ioc.write::<Svc>()
     }
 }
@@ -88,7 +87,7 @@ macro_rules! multi_write {
             $(Cont::ServiceBase: Downcast<$params>),+
         {
             type Ret = ($(<Write<$params> as Method<'a, Cont>>::Ret,)+);
-            fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+            fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
                 Ok((
                     $(try!{ioc.write::<$params>()},)+
                 ))
@@ -105,7 +104,7 @@ impl<'a, Cont> Method<'a, Cont> for ReadAll
     where Cont: Container<'a>,
 {
     type Ret = BTreeMap<&'a Cont::Key, Cont::ReadGuardBase>;
-    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+    fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
         ioc.read_all()
     }
 }
@@ -118,7 +117,7 @@ impl<'a, Cont> Method<'a, Cont> for WriteAll
     where Cont: Container<'a>,
 {
     type Ret = BTreeMap<&'a Cont::Key, Cont::WriteGuardBase>;
-    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+    fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
         ioc.write_all()
     }
 }
@@ -135,7 +134,7 @@ where
     Cont::ServiceBase: Downcast<Obj::Factory>,
 {
     type Ret = Obj;
-    fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+    fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
         ioc.create::<Obj>()
     }
 }
@@ -150,7 +149,7 @@ macro_rules! multi_create {
             $(Cont::ServiceBase: Downcast<$params::Factory>),+
         {
             type Ret = ($(<Create<$params> as Method<'a, Cont>>::Ret,)+);
-            fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+            fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
                 Ok((
                     $(try!{ioc.create::<$params>()},)+
                 ))
@@ -169,9 +168,9 @@ macro_rules! multi_methods {
         {
             type Ret = ($($params::Ret,)+);
 
-            fn invoke(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+            fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
                 Ok((
-                    $(try!{$params::invoke(ioc)},)+
+                    $(try!{$params::resolve(ioc)},)+
                 ))
             }
         }

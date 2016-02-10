@@ -1,4 +1,4 @@
-use errors::Error;
+use error::Error;
 use methods::Method;
 use container::Container;
 
