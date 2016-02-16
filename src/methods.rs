@@ -1,29 +1,34 @@
-use error::Error;
+use errors::Error;
 use guards::{ReadGuard, WriteGuard};
-use factory::FactoryBase;
+//use factory::FactoryBase;
 use container::Container;
 use reflect;
 
 use downcast::Downcast;
 
-use std::collections::BTreeMap;
+use std::any::Any;
 
 // ++++++++++++++++++++ Method ++++++++++++++++++++
 
-pub trait Method<'a, Cont>
-    where Cont: Container<'a>
+pub trait Method<'a, Key, SvcBase: ?Sized>: Any
+    where Key: reflect::Key, SvcBase: Any
 {
-    type Ret;
-    fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>>;
+    type Ret: 'a;
+    fn resolve(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>>;
+    fn try_resolve(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>>;
 }
 
 // ++++++++++++++++++++ dummy ++++++++++++++++++++
 
-impl<'a, Cont> Method<'a, Cont> for ()
-    where Cont: Container<'a>
+impl<'a, Key, SvcBase: ?Sized> Method<'a, Key, SvcBase> for ()
+    where Key: reflect::Key, SvcBase: Any
 {
     type Ret = ();
-    fn resolve(_: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+
+    fn resolve(_: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+        Ok(())
+    }
+    fn try_resolve(_: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
         Ok(())
     }
 }
@@ -32,96 +37,125 @@ impl<'a, Cont> Method<'a, Cont> for ()
 
 pub struct Read<Svc>(Svc);
 
-impl<'a, Cont, Svc> Method<'a, Cont> for Read<Svc>
+impl<'a, Key, SvcBase: ?Sized, Svc> Method<'a, Key, SvcBase> for Read<Svc>
 where 
-    Svc: reflect::Service<Key = Cont::Key>,
-    Cont: Container<'a>,
-    Cont::ServiceBase: Downcast<Svc>,
+    Key: reflect::Key,
+    Svc: reflect::Service<Key = Key>,
+    SvcBase: Downcast<Svc>,
 {
-    type Ret = ReadGuard<Svc, Cont::ServiceBase, Cont::ReadGuardBase>;
-    fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+    type Ret = ReadGuard<'a, Svc, SvcBase>;
+    fn resolve(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
         ioc.read::<Svc>()
+    }
+    fn try_resolve(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+        ioc.try_read::<Svc>()
     }
 }
 
 macro_rules! multi_read {
     ($({$($params:ident)+})+) => {$(
-        impl<'a, Cont, $($params),+> Method<'a, Cont> for Read<($($params,)+)>
+        impl<'a, Key, SvcBase: ?Sized, $($params),+> Method<'a, Key, SvcBase> for Read<($($params,)+)>
         where
-            $($params: reflect::Service<Key = Cont::Key>),+,
-            Cont: Container<'a>,
-            $(Cont::ServiceBase: Downcast<$params>),+
+            Key: reflect::Key,
+            $($params: reflect::Service<Key = Key>),+,
+            $(SvcBase: Downcast<$params>),+
         {
-            type Ret = ($(<Read<$params> as Method<'a, Cont>>::Ret,)+);
-            fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+            type Ret = ($(<Read<$params> as Method<'a, Key, SvcBase>>::Ret,)+);
+            fn resolve(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
                 Ok((
                     $(try!{ioc.read::<$params>()},)+
+                ))
+            }
+            fn try_resolve(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+                Ok((
+                    $(try!{ioc.try_read::<$params>()},)+
                 ))
             }
         }
     )+}
 }
 
+multi_read!{
+    {A} 
+    {A B} 
+    {A B C}
+    {A B C D}
+    {A B C D E}
+    {A B C D E F}
+    {A B C D E F G}
+    {A B C D E F G H}
+    {A B C D E F G H J}
+    {A B C D E F G H J K}
+    {A B C D E F G H J K L}
+    {A B C D E F G H J K L M}
+    {A B C D E F G H J K L M N}
+    {A B C D E F G H J K L M N O}
+    {A B C D E F G H J K L M N O P}
+    {A B C D E F G H J K L M N O P Q}
+}
+
 // ++++++++++++++++++++ Write ++++++++++++++++++++
 
-pub struct Write<Svc>(fn(Svc));
+pub struct Write<Svc>(Svc);
 
-impl<'a, Cont, Svc> Method<'a, Cont> for Write<Svc>
+impl<'a, Key, SvcBase: ?Sized, Svc> Method<'a, Key, SvcBase> for Write<Svc>
 where 
-    Svc: reflect::Service<Key = Cont::Key>,
-    Cont: Container<'a>,
-    Cont::ServiceBase: Downcast<Svc>,
+    Key: reflect::Key,
+    Svc: reflect::Service<Key = Key>,
+    SvcBase: Downcast<Svc>,
 {
-    type Ret = WriteGuard<Svc, Cont::ServiceBase, Cont::WriteGuardBase>;
-    fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+    type Ret = WriteGuard<'a, Svc, SvcBase>;
+    fn resolve(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
         ioc.write::<Svc>()
+    }
+    fn try_resolve(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+        ioc.try_write::<Svc>()
     }
 }
 
 macro_rules! multi_write {
     ($({$($params:ident)+})+) => {$(
-        impl<'a, Cont, $($params),+> Method<'a, Cont> for Write<($($params,)+)>
+        impl<'a, Key, SvcBase: ?Sized, $($params),+> Method<'a, Key, SvcBase> for Write<($($params,)+)>
         where
-            $($params: reflect::Service<Key = Cont::Key>),+,
-            Cont: Container<'a>,
-            $(Cont::ServiceBase: Downcast<$params>),+
+            Key: reflect::Key,
+            $($params: reflect::Service<Key = Key>),+,
+            $(SvcBase: Downcast<$params>),+
         {
-            type Ret = ($(<Write<$params> as Method<'a, Cont>>::Ret,)+);
-            fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+            type Ret = ($(<Write<$params> as Method<'a, Key, SvcBase>>::Ret,)+);
+            fn resolve(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
                 Ok((
                     $(try!{ioc.write::<$params>()},)+
+                ))
+            }
+            fn try_resolve(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+                Ok((
+                    $(try!{ioc.try_write::<$params>()},)+
                 ))
             }
         }
     )+}
 }
 
-// ++++++++++++++++++++ ReadAll ++++++++++++++++++++
-
-pub struct ReadAll(());
-
-impl<'a, Cont> Method<'a, Cont> for ReadAll
-    where Cont: Container<'a>,
-{
-    type Ret = BTreeMap<&'a Cont::Key, Cont::ReadGuardBase>;
-    fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
-        ioc.read_all()
-    }
+multi_write!{
+    {A} 
+    {A B} 
+    {A B C}
+    {A B C D}
+    {A B C D E}
+    {A B C D E F}
+    {A B C D E F G}
+    {A B C D E F G H}
+    {A B C D E F G H J}
+    {A B C D E F G H J K}
+    {A B C D E F G H J K L}
+    {A B C D E F G H J K L M}
+    {A B C D E F G H J K L M N}
+    {A B C D E F G H J K L M N O}
+    {A B C D E F G H J K L M N O P}
+    {A B C D E F G H J K L M N O P Q}
 }
 
-// ++++++++++++++++++++ WriteAll ++++++++++++++++++++
-
-pub struct WriteAll(());
-
-impl<'a, Cont> Method<'a, Cont> for WriteAll
-    where Cont: Container<'a>,
-{
-    type Ret = BTreeMap<&'a Cont::Key, Cont::WriteGuardBase>;
-    fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
-        ioc.write_all()
-    }
-}
-
+/*
 // ++++++++++++++++++++ Create ++++++++++++++++++++
 
 pub struct Create<Obj>(fn(Obj));
@@ -157,82 +191,32 @@ macro_rules! multi_create {
         }
     )+}
 }
-
+*/
 // ++++++++++++++++++++ multi-method ++++++++++++++++++++
 
 macro_rules! multi_methods {
     ($({$($params:ident)+})+) => {$(
         
-        impl<'a, Cont, $($params),+> Method<'a, Cont> for ($($params,)+) 
-            where Cont: Container<'a>, $($params: Method<'a, Cont> + 'a),+, 
+        impl<'a, Key, SvcBase: ?Sized, $($params),+> Method<'a, Key, SvcBase> for ($($params,)+) 
+        where 
+            Key: reflect::Key,
+            $($params: Method<'a, Key, SvcBase> + 'a),+, 
+            SvcBase: Any,
         {
             type Ret = ($($params::Ret,)+);
-
-            fn resolve(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+            fn resolve(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
                 Ok((
                     $(try!{$params::resolve(ioc)},)+
+                ))
+            }
+            fn try_resolve(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+                Ok((
+                    $(try!{$params::try_resolve(ioc)},)+
                 ))
             }
         }
 
     )+}
-}
-
-multi_read!{
-    {A} 
-    {A B} 
-    {A B C}
-    {A B C D}
-    {A B C D E}
-    {A B C D E F}
-    {A B C D E F G}
-    {A B C D E F G H}
-    {A B C D E F G H J}
-    {A B C D E F G H J K}
-    {A B C D E F G H J K L}
-    {A B C D E F G H J K L M}
-    {A B C D E F G H J K L M N}
-    {A B C D E F G H J K L M N O}
-    {A B C D E F G H J K L M N O P}
-    {A B C D E F G H J K L M N O P Q}
-}
-
-multi_write!{
-    {A} 
-    {A B} 
-    {A B C}
-    {A B C D}
-    {A B C D E}
-    {A B C D E F}
-    {A B C D E F G}
-    {A B C D E F G H}
-    {A B C D E F G H J}
-    {A B C D E F G H J K}
-    {A B C D E F G H J K L}
-    {A B C D E F G H J K L M}
-    {A B C D E F G H J K L M N}
-    {A B C D E F G H J K L M N O}
-    {A B C D E F G H J K L M N O P}
-    {A B C D E F G H J K L M N O P Q}
-}
-
-multi_create!{
-    {A} 
-    {A B} 
-    {A B C}
-    {A B C D}
-    {A B C D E}
-    {A B C D E F}
-    {A B C D E F G}
-    {A B C D E F G H}
-    {A B C D E F G H J}
-    {A B C D E F G H J K}
-    {A B C D E F G H J K L}
-    {A B C D E F G H J K L M}
-    {A B C D E F G H J K L M N}
-    {A B C D E F G H J K L M N O}
-    {A B C D E F G H J K L M N O P}
-    {A B C D E F G H J K L M N O P Q}
 }
 
 multi_methods!{

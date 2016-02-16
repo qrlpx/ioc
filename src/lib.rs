@@ -3,25 +3,22 @@
 #![feature(core_intrinsics)]
 #![feature(box_syntax)]
 
-#[macro_use] extern crate downcast;
+#[macro_use] 
+extern crate downcast;
 
 mod reflect;
-mod error;
+mod errors;
 mod guards;
-mod factory;
+//mod factory;
 mod methods;
 mod container;
-mod ioc;
-mod staged_ioc;
 
 pub use reflect::*;
-pub use error::*;
+pub use errors::*;
 pub use guards::*;
-pub use factory::*;
 pub use methods::*;
+//pub use factory::*;
 pub use container::*;
-pub use ioc::*;
-pub use staged_ioc::*;
 
 /// Alias for `Read`.
 pub use Read as R;
@@ -30,7 +27,7 @@ pub use Read as R;
 pub use Write as W;
 
 // NOTE old code
-// TODO move this into tests/examples
+// TODO move this to tests/examples
 /*#[macro_use] 
 extern crate lazy_static;
 

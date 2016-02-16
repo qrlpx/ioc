@@ -1,31 +1,31 @@
 use error::Error;
 use methods::Method;
 use container::Container;
+use reflect;
 
 use std::any::Any;
 use std::error::Error as StdError;
 use std::ops::Deref;
 
-/// TODO get rid of Key-param?
-pub trait FactoryBase<'a, Cont, Obj>: Any 
-    where Cont: Container<'a>
+pub trait FactoryBase<'a, Key, SvcBase: ?Sized, Obj>: Any 
+    where Key: reflect::Key, SvcBase: Any
 {
     fn create(
         &self, 
-        self_key: &'a Cont::Key, 
-        ioc: &'a Cont
-    ) -> Result<Obj, Error<'a, Cont::Key>>;
+        self_key: &'a Key, 
+        ioc: &'a Container<Key, SvcBase>
+    ) -> Result<Obj, Error<'a, Key>>;
 }
 
 pub trait Factory<'a, Cont, Obj>: Any
     where Cont: Container<'a>
 {
-    type ArgSelection: Method<'a, Cont>;
-    type Args = <Self::ArgSelection as Method<'a, Cont>>::Ret;
+    type Args: Method<'a, Cont>;
+    type ArgsRet = <Self::Args as Method<'a, Cont>>::Ret;
 
     type Error: StdError;
 
-    fn create(&self, args: <Self::ArgSelection as Method<'a, Cont>>::Ret) -> Result<Obj, Self::Error>;
+    fn create(&self, args: <Self::Args as Method<'a, Cont>>::Ret) -> Result<Obj, Self::Error>;
 }
 
 /// Auto-implement `FactoryBase` for a type which implements `Factory`.

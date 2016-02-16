@@ -17,8 +17,4 @@ pub trait FactoryObject: Any + Sized {
     type Factory: Service<Key = Self::Key> /* + FactoryBase<'a, _>*/;
 }
 
-pub trait Stage: Any {
-    type Key: Key = String;
-    fn key() -> &'static Self::Key;
-}
 

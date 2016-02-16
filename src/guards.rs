@@ -2,30 +2,28 @@ use downcast::Downcast;
 
 use std::any::Any;
 use std::marker::PhantomData;
+use std::sync::{RwLockReadGuard, RwLockWriteGuard};
 use std::ops::{Deref, DerefMut};
 
 // ++++++++++++++++++++ ReadGuard ++++++++++++++++++++
 
-/// * `Svc`: The service-type `SvcBase` will be downcasted to.
-/// * `SvcBase`: The service-base-type.
-/// * `Inner`: The guard-type which will be wrapped (derefs to `Box<SvcBase>`).
-pub struct ReadGuard<Svc, SvcBase: ?Sized, Inner> {
-    inner: Inner,
-    _phantom: PhantomData<fn(Svc, SvcBase)>,
+pub struct ReadGuard<'a, Svc, SvcBase: ?Sized + 'a> {
+    inner: RwLockReadGuard<'a, Box<SvcBase>>,
+    _phantom: PhantomData<fn(Svc)>,
 }
 
-impl<Svc, SvcBase: ?Sized, Inner> ReadGuard<Svc, SvcBase, Inner> 
-    where Svc: Any, SvcBase: Downcast<Svc>, Inner: Deref<Target = Box<SvcBase>>
+impl<'a, Svc, SvcBase: ?Sized> ReadGuard<'a, Svc, SvcBase> 
+    where Svc: Any, SvcBase: Downcast<Svc>
 {
     #[doc(hidden)]
-    pub fn new(inner: Inner) -> Self {
+    pub fn new(inner: RwLockReadGuard<'a, Box<SvcBase>>) -> Self {
         assert!(inner.is_type());
         ReadGuard{ inner: inner, _phantom: PhantomData }
     }
 }
 
-impl<Svc, SvcBase: ?Sized, Inner> Deref for ReadGuard<Svc, SvcBase, Inner> 
-    where Svc: Any, SvcBase: Downcast<Svc>, Inner: Deref<Target = Box<SvcBase>>
+impl<'a, Svc, SvcBase: ?Sized> Deref for ReadGuard<'a, Svc, SvcBase> 
+    where Svc: Any, SvcBase: Downcast<Svc>
 {
     type Target = Svc;
     fn deref(&self) -> &Self::Target { 
@@ -35,26 +33,23 @@ impl<Svc, SvcBase: ?Sized, Inner> Deref for ReadGuard<Svc, SvcBase, Inner>
 
 // ++++++++++++++++++++ WriteGuard ++++++++++++++++++++
 
-/// * `Svc`: The service-type `SvcBase` will be downcasted to.
-/// * `SvcBase`: The service-base-type.
-/// * `Inner`: The guard-type which will be wrapped (derefs to `Box<SvcBase>`).
-pub struct WriteGuard<Svc, SvcBase: ?Sized, Inner> {
-    inner: Inner,
-    _phantom: PhantomData<fn(Svc, SvcBase)>,
+pub struct WriteGuard<'a, Svc, SvcBase: ?Sized + 'a> {
+    inner: RwLockWriteGuard<'a, Box<SvcBase>>,
+    _phantom: PhantomData<fn(Svc)>,
 }
 
-impl<Svc, SvcBase: ?Sized, Inner> WriteGuard<Svc, SvcBase, Inner> 
-    where Svc: Any, SvcBase: Downcast<Svc>, Inner: Deref<Target = Box<SvcBase>>
+impl<'a, Svc, SvcBase: ?Sized> WriteGuard<'a, Svc, SvcBase> 
+    where Svc: Any, SvcBase: Downcast<Svc>
 {
     #[doc(hidden)]
-    pub fn new(inner: Inner) -> Self {
+    pub fn new(inner: RwLockWriteGuard<'a, Box<SvcBase>>) -> Self {
         assert!(inner.is_type());
         WriteGuard{ inner: inner, _phantom: PhantomData }
     }
 }
 
-impl<Svc, SvcBase: ?Sized, Inner> Deref for WriteGuard<Svc, SvcBase, Inner> 
-    where Svc: Any, SvcBase: Downcast<Svc>, Inner: Deref<Target = Box<SvcBase>>
+impl<'a, Svc, SvcBase: ?Sized> Deref for WriteGuard<'a, Svc, SvcBase> 
+    where Svc: Any, SvcBase: Downcast<Svc>
 {
     type Target = Svc;
     fn deref(&self) -> &Self::Target { 
@@ -62,11 +57,10 @@ impl<Svc, SvcBase: ?Sized, Inner> Deref for WriteGuard<Svc, SvcBase, Inner>
     }
 }
 
-impl<Svc, SvcBase: ?Sized, Inner> DerefMut for WriteGuard<Svc, SvcBase, Inner> 
-    where Svc: Any, SvcBase: Downcast<Svc>, Inner: DerefMut<Target = Box<SvcBase>>
+impl<'a, Svc, SvcBase: ?Sized> DerefMut for WriteGuard<'a, Svc, SvcBase> 
+    where Svc: Any, SvcBase: Downcast<Svc>
 {
     fn deref_mut(&mut self) -> &mut Self::Target { 
         unsafe { self.inner.unchecked_downcast_mut() } 
     }
 }
-

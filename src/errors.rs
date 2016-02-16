@@ -24,6 +24,7 @@ impl StdError for DummyError {
 pub enum Error<'a, Key: 'a> {
     NotFound{ key: &'a Key },
     Poisoned{ key: &'a Key },
+    WouldBlock{ key: &'a Key },
     MismatchedType{ key: &'a Key, expected: &'static str, found: &'static str },
     CreationError{ key: &'a Key, error: Box<StdError> }
 }
@@ -34,10 +35,9 @@ impl<'a, Key> Display for Error<'a, Key>
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let desc = self.description();
         match self {
-            &Error::NotFound{ key } => {
-                fmt.write_fmt(format_args!("[{:?}] {}.", key, desc))
-            }
-            &Error::Poisoned{ key } => {
+            &Error::NotFound{ key } 
+            | &Error::Poisoned{ key } 
+            | &Error::WouldBlock{ key } => {
                 fmt.write_fmt(format_args!("[{:?}] {}.", key, desc))
             }
             &Error::MismatchedType{ key, expected, found } => {
@@ -56,7 +56,8 @@ impl<'a, Key> StdError for Error<'a, Key>
     fn description(&self) -> &str {
         match self {
             &Error::NotFound{ .. } => "Service could not be found",
-            &Error::Poisoned{ .. } => "Service mutex was poisoned",
+            &Error::Poisoned{ .. } => "Service could not be aquired, mutex was poisoned",
+            &Error::WouldBlock{ .. } => "Service could not be aquired, mutex would block",
             &Error::MismatchedType{ .. } => "Service is of wrong type",
             &Error::CreationError{ .. } => "Factory failed to create object",
         }
