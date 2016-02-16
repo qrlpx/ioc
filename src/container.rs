@@ -13,6 +13,8 @@ fn type_name<T: ::std::marker::Reflect>() -> &'static str {
     unsafe { ::std::intrinsics::type_name::<T>() }
 }
 
+// ++++++++++++++++++++ Container ++++++++++++++++++++
+
 pub struct Container<Key, SvcBase: ?Sized> {
     services: BTreeMap<Key, RwLock<Box<SvcBase>>>,
 }
@@ -20,17 +22,18 @@ pub struct Container<Key, SvcBase: ?Sized> {
 impl<Key, SvcBase: ?Sized> Container<Key, SvcBase> 
     where Key: reflect::Key, SvcBase: Any
 {
+    #[doc(hidden)]
     pub fn new() -> Self {
         Container{ services: BTreeMap::new() }
     }
 
+    #[doc(hidden)]
     pub fn register_service(&mut self, key: Key, svc: Box<SvcBase>) -> &mut Self {
         self.services.insert(key, RwLock::new(svc));
         self
     }
 
-    /// NOTE: The `Box<Svc>: Into<Box<Base>>`-clause is needed due to rusts lack of 
-    /// HKT or a `Coercible`-trait (to name two solutions).
+    #[doc(hidden)]
     pub fn register<Svc>(&mut self, svc: Svc) -> &mut Self
     where
         Svc: reflect::Service<Key = Key>,
@@ -209,5 +212,42 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
     //pub fn try_resolve
 }
 
+// ++++++++++++++++++++ ContainerBuilder ++++++++++++++++++++
 
+pub struct ContainerBuilder<Key, SvcBase: ?Sized> {
+    cont: Container<Key, SvcBase>
+}
 
+impl<Key, SvcBase: ?Sized> ContainerBuilder<Key, SvcBase>
+    where Key: reflect::Key, SvcBase: Any
+{
+    pub fn new() -> Self {
+        ContainerBuilder{ cont: Container::new() }
+    }
+
+    pub fn register_service(&mut self, key: Key, svc: Box<SvcBase>) -> &mut Self {
+        self.cont.register_service(key, svc);
+        self
+    }
+
+    /// NOTE: The `Box<Svc>: Into<Box<Base>>`-clause is needed due to rusts lack of 
+    /// HKT or a `Coercible`-trait (to name two solutions).
+    pub fn register<Svc>(&mut self, svc: Svc) -> &mut Self
+    where
+        Svc: reflect::Service<Key = Key>,
+        Box<Svc>: Into<Box<SvcBase>>,
+    {
+        self.cont.register::<Svc>(svc);
+        self
+    }
+
+    pub fn build(self) -> Container<Key, SvcBase> {
+        self.cont
+    }
+}
+
+impl<Key, SvcBase: ?Sized> Default for Container<Key, SvcBase> 
+    where Key: reflect::Key, SvcBase: Any
+{
+    fn default() -> Self { Self::new() }
+}
