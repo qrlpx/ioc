@@ -4,10 +4,11 @@ use methods::Method;
 use reflect;
 
 use downcast::Downcast;
+use shared_mutex::{SharedMutex, SharedMutexReadGuard, SharedMutexWriteGuard};
 
 use std::any::Any;
 use std::collections::BTreeMap;
-use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError};
+use std::sync::{TryLockError};
 
 fn type_name<T: ::std::marker::Reflect>() -> &'static str {
     unsafe { ::std::intrinsics::type_name::<T>() }
@@ -16,7 +17,7 @@ fn type_name<T: ::std::marker::Reflect>() -> &'static str {
 // ++++++++++++++++++++ Container ++++++++++++++++++++
 
 pub struct Container<Key, SvcBase: ?Sized> {
-    services: BTreeMap<Key, RwLock<Box<SvcBase>>>,
+    services: BTreeMap<Key, SharedMutex<Box<SvcBase>>>,
 }
 
 impl<Key, SvcBase: ?Sized> Container<Key, SvcBase> 
@@ -29,7 +30,7 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
 
     #[doc(hidden)]
     pub fn register_service(&mut self, key: Key, svc: Box<SvcBase>) -> &mut Self {
-        self.services.insert(key, RwLock::new(svc));
+        self.services.insert(key, SharedMutex::new(svc));
         self
     }
 
@@ -42,18 +43,18 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
         self.register_service(Svc::key().clone(), Box::new(svc).into())
     }
 
-    pub fn services(&self) -> &BTreeMap<Key, RwLock<Box<SvcBase>>> {
+    pub fn services(&self) -> &BTreeMap<Key, SharedMutex<Box<SvcBase>>> {
         &self.services
     }
     
-    pub fn get_service(&self, key: &Key) -> Option<&RwLock<Box<SvcBase>>> {
+    pub fn get_service(&self, key: &Key) -> Option<&SharedMutex<Box<SvcBase>>> {
         self.services.get(key)
     }
 
     pub fn read_service_base<'a>(
         &'a self, 
         key: &'a Key
-    ) -> Result<RwLockReadGuard<Box<SvcBase>>, Error<'a, Key>> {
+    ) -> Result<SharedMutexReadGuard<Box<SvcBase>>, Error<'a, Key>> {
         match self.get_service(key) {
             Some(service) => match service.read() {
                 Ok(r) => Ok(r),
@@ -66,7 +67,7 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
     pub fn write_service_base<'a>(
         &'a self, 
         key: &'a Key
-    ) -> Result<RwLockWriteGuard<Box<SvcBase>>, Error<'a, Key>> {
+    ) -> Result<SharedMutexWriteGuard<Box<SvcBase>>, Error<'a, Key>> {
         match self.get_service(key) {
             Some(service) => match service.write() {
                 Ok(r) => Ok(r),
@@ -129,7 +130,7 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
     pub fn try_read_service_base<'a>(
         &'a self, 
         key: &'a Key
-    ) -> Result<RwLockReadGuard<Box<SvcBase>>, Error<'a, Key>> {
+    ) -> Result<SharedMutexReadGuard<Box<SvcBase>>, Error<'a, Key>> {
         match self.get_service(key) {
             Some(service) => match service.try_read() {
                 Ok(r) => Ok(r),
@@ -143,7 +144,7 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
     pub fn try_write_service_base<'a>(
         &'a self, 
         key: &'a Key
-    ) -> Result<RwLockWriteGuard<Box<SvcBase>>, Error<'a, Key>> {
+    ) -> Result<SharedMutexWriteGuard<Box<SvcBase>>, Error<'a, Key>> {
         match self.get_service(key) {
             Some(service) => match service.try_write() {
                 Ok(r) => Ok(r),

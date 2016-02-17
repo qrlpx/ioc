@@ -1,14 +1,14 @@
 use downcast::Downcast;
+use shared_mutex::{SharedMutexReadGuard, SharedMutexWriteGuard};
 
 use std::any::Any;
 use std::marker::PhantomData;
-use std::sync::{RwLockReadGuard, RwLockWriteGuard};
 use std::ops::{Deref, DerefMut};
 
 // ++++++++++++++++++++ ReadGuard ++++++++++++++++++++
 
 pub struct ReadGuard<'a, Svc, SvcBase: ?Sized + 'a> {
-    inner: RwLockReadGuard<'a, Box<SvcBase>>,
+    inner: SharedMutexReadGuard<'a, Box<SvcBase>>,
     _phantom: PhantomData<fn(Svc)>,
 }
 
@@ -16,7 +16,7 @@ impl<'a, Svc, SvcBase: ?Sized> ReadGuard<'a, Svc, SvcBase>
     where Svc: Any, SvcBase: Downcast<Svc>
 {
     #[doc(hidden)]
-    pub fn new(inner: RwLockReadGuard<'a, Box<SvcBase>>) -> Self {
+    pub fn new(inner: SharedMutexReadGuard<'a, Box<SvcBase>>) -> Self {
         assert!(inner.is_type());
         ReadGuard{ inner: inner, _phantom: PhantomData }
     }
@@ -34,7 +34,7 @@ impl<'a, Svc, SvcBase: ?Sized> Deref for ReadGuard<'a, Svc, SvcBase>
 // ++++++++++++++++++++ WriteGuard ++++++++++++++++++++
 
 pub struct WriteGuard<'a, Svc, SvcBase: ?Sized + 'a> {
-    inner: RwLockWriteGuard<'a, Box<SvcBase>>,
+    inner: SharedMutexWriteGuard<'a, Box<SvcBase>>,
     _phantom: PhantomData<fn(Svc)>,
 }
 
@@ -42,7 +42,7 @@ impl<'a, Svc, SvcBase: ?Sized> WriteGuard<'a, Svc, SvcBase>
     where Svc: Any, SvcBase: Downcast<Svc>
 {
     #[doc(hidden)]
-    pub fn new(inner: RwLockWriteGuard<'a, Box<SvcBase>>) -> Self {
+    pub fn new(inner: SharedMutexWriteGuard<'a, Box<SvcBase>>) -> Self {
         assert!(inner.is_type());
         WriteGuard{ inner: inner, _phantom: PhantomData }
     }
