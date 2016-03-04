@@ -1,11 +1,6 @@
-#![feature(associated_type_defaults)] 
-#![feature(reflect_marker)]
-#![feature(core_intrinsics)]
-#![feature(box_syntax)]
-
 #[macro_use] 
 extern crate downcast;
-extern crate shared_mutex;
+//extern crate shared_mutex;
 
 mod reflect;
 mod errors;
@@ -20,12 +15,6 @@ pub use guards::*;
 pub use methods::*;
 //pub use factory::*;
 pub use container::*;
-
-/// Alias for `Read`.
-pub use Read as R;
-
-/// Alias for `Write`.
-pub use Write as W;
 
 // NOTE old code
 // TODO move this to tests/examples

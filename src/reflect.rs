@@ -8,13 +8,13 @@ impl<T> Key for T
 {}
 
 pub trait Service: Any + Sized {
-    type Key: Key = String;
+    type Key: Key;
     fn key() -> &'static Self::Key;
 }
 
-pub trait FactoryObject: Any + Sized {
+/*pub trait FactoryObject: Any + Sized {
     type Key: Key = <Self::Factory as Service>::Key;
     type Factory: Service<Key = Self::Key> /* + FactoryBase<'a, _>*/;
-}
+}*/
 
 
