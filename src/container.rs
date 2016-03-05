@@ -1,4 +1,4 @@
-use errors::Error;
+use errors::{self, Error};
 use guards::{ReadGuard, WriteGuard};
 use methods::Method;
 use reflect;
@@ -57,10 +57,7 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
         key: &'a Key
     ) -> Result<RwLockReadGuard<Box<SvcBase>>, Error<'a, Key>> {
         match self.get_service(key) {
-            Some(service) => match service.read() {
-                Ok(r) => Ok(r),
-                Err(_) => Err(Error::Poisoned{ key: key })
-            },
+            Some(service) => errors::or_err(key, service.read()),
             None => Err(Error::NotFound{ key: key })
         }
     }
@@ -70,10 +67,7 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
         key: &'a Key
     ) -> Result<RwLockWriteGuard<Box<SvcBase>>, Error<'a, Key>> {
         match self.get_service(key) {
-            Some(service) => match service.write() {
-                Ok(r) => Ok(r),
-                Err(_) => Err(Error::Poisoned{ key: key })
-            },
+            Some(service) => errors::or_err(key, service.write()),
             None => Err(Error::NotFound{ key: key })
         }
     }
@@ -133,11 +127,7 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
         key: &'a Key
     ) -> Result<RwLockReadGuard<Box<SvcBase>>, Error<'a, Key>> {
         match self.get_service(key) {
-            Some(service) => match service.try_read() {
-                Ok(r) => Ok(r),
-                Err(TryLockError::Poisoned(_)) => Err(Error::Poisoned{ key: key }),
-                Err(TryLockError::WouldBlock) => Err(Error::WouldBlock{ key: key })
-            },
+            Some(service) => errors::or_err(key, service.read()),
             None => Err(Error::NotFound{ key: key })
         }
     }
@@ -147,11 +137,7 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
         key: &'a Key
     ) -> Result<RwLockWriteGuard<Box<SvcBase>>, Error<'a, Key>> {
         match self.get_service(key) {
-            Some(service) => match service.try_write() {
-                Ok(r) => Ok(r),
-                Err(TryLockError::Poisoned(_)) => Err(Error::Poisoned{ key: key }),
-                Err(TryLockError::WouldBlock) => Err(Error::WouldBlock{ key: key })
-            },
+            Some(service) => errors::or_err(key, service.write()),
             None => Err(Error::NotFound{ key: key })
         }
     }
