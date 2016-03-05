@@ -6,6 +6,7 @@ use std::sync::{PoisonError, TryLockError};
 
 // ++++++++++++++++++++ DummyError ++++++++++++++++++++
 
+/// Dummy error-type to be used for factories which never fail creating objects.
 #[derive(Debug)]
 pub struct DummyError(());
 
@@ -20,7 +21,6 @@ impl StdError for DummyError {
 // ++++++++++++++++++++ Error ++++++++++++++++++++
 // TODO: error messages need some work
 
-/// TODO something about BorrowState when using RefCells for Services?
 #[derive(Debug)]
 pub enum Error<'a, Key: 'a> {
     NotFound{ key: &'a Key },
@@ -86,6 +86,21 @@ impl<'a, Key, X> From<(&'a Key, TryLockError<X>)> for Error<'a, Key>
 
 // ++++++++++++++++++++ utility ++++++++++++++++++++
 
+/// Utility for converting `Result<X, [Poison|TryLock]Error>` to `Result<X, ioc::Error>`.
+///
+/// Example usage:
+/// 
+/// ```
+/// fn foo<'a>(bar: &'a RwLock<Svc>) -> Result<Foo, ioc::Error<'a, Key>> {
+///     // doesn't work due to ioc::Error requiring the service key
+///     let foo = try!{lock.read()}.do_something();
+///
+///     // works
+///     let foo = try!{ioc::or_err(Svc::key(), lock.read())}.do_something();
+///     
+///     Ok(foo)
+/// }
+/// ```
 pub fn or_err<'a, Key, X, E>(key: &'a Key, res: Result<X, E>) -> Result<X, Error<'a, Key>>
     where Key: reflect::Key, Error<'a, Key>: From<(&'a Key, E)>
 {
