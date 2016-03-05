@@ -2,6 +2,7 @@ use reflect;
 
 use std::error::Error as StdError;
 use std::fmt::{self, Display};
+use std::sync::{PoisonError, TryLockError};
 
 // ++++++++++++++++++++ DummyError ++++++++++++++++++++
 
@@ -64,3 +65,32 @@ impl<'a, Key> StdError for Error<'a, Key>
     }
 }
 
+impl<'a, Key, X> From<(&'a Key, PoisonError<X>)> for Error<'a, Key> 
+    where Key: reflect::Key
+{
+    fn from((key, _): (&'a Key, PoisonError<X>)) -> Self {
+        Error::Poisoned{ key: key }
+    }
+}
+
+impl<'a, Key, X> From<(&'a Key, TryLockError<X>)> for Error<'a, Key> 
+    where Key: reflect::Key
+{
+    fn from((key, err): (&'a Key, TryLockError<X>)) -> Self {
+        match err {
+            TryLockError::Poisoned(_) => Error::Poisoned{ key: key },
+            TryLockError::WouldBlock => Error::WouldBlock{ key: key }
+        }
+    }
+}
+
+// ++++++++++++++++++++ utility ++++++++++++++++++++
+
+pub fn or_err<'a, Key, X, E>(key: &'a Key, res: Result<X, E>) -> Result<X, Error<'a, Key>>
+    where Key: reflect::Key, Error<'a, Key>: From<(&'a Key, E)>
+{
+    match res {
+        Ok(r) => Ok(r),
+        Err(err) => Err(Error::from((key, err)))
+    }
+}
