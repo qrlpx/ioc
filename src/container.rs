@@ -238,7 +238,7 @@ impl<Key, SvcBase: ?Sized> ContainerBuilder<Key, SvcBase>
     }
 }
 
-impl<Key, SvcBase: ?Sized> Default for Container<Key, SvcBase> 
+impl<Key, SvcBase: ?Sized> Default for ContainerBuilder<Key, SvcBase> 
     where Key: reflect::Key, SvcBase: Any
 {
     fn default() -> Self { Self::new() }
