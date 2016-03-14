@@ -1,6 +1,6 @@
 [package]
 name = "ioc"
-version = "0.5.3"
+version = "0.5.4"
 authors = ["qrlpx <>"]
 
 repository = "https://github.com/qrlpx/ioc"
@@ -9,6 +9,6 @@ description = "A simple IoC (Inversion of Control) container in Rust. "
 license = "CC0-1.0"
 
 [dependencies]
-downcast = "^0.5"
+downcast = "^0.6"
 #shared-mutex = "^0.3"
 

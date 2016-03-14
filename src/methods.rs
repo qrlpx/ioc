@@ -1,7 +1,6 @@
 use errors::Error;
-use guards::{ReadGuard, WriteGuard};
 //use factory::FactoryBase;
-use container::Container;
+use container::{ReadGuard, WriteGuard, Container};
 use reflect;
 
 use downcast::Downcast;

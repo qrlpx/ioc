@@ -1,9 +1,8 @@
 use errors::{self, Error};
-use guards::{ReadGuard, WriteGuard};
 use methods::Method;
 use reflect;
 
-use downcast::Downcast;
+use downcast::{self, Downcast};
 //use shared_mutex::{SharedMutex, SharedMutexReadGuard, SharedMutexWriteGuard};
 
 use std::any::Any;
@@ -16,6 +15,9 @@ fn type_name<T: Any>() -> &'static str {
 }
 
 // ++++++++++++++++++++ Container ++++++++++++++++++++
+
+pub type ReadGuard<'a, T, Base> = downcast::Guard<T, RwLockReadGuard<'a, Box<Base>>>;
+pub type WriteGuard<'a, T, Base> = downcast::Guard<T, RwLockWriteGuard<'a, Box<Base>>>;
 
 pub struct Container<Key, SvcBase: ?Sized> {
     services: BTreeMap<Key, RwLock<Box<SvcBase>>>,
@@ -86,7 +88,7 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
                 found: type_name::<Svc>(),
             })
         };
-        Ok(ReadGuard::new(base))
+        Ok(ReadGuard::wrap(base).ok().unwrap())
     }
 
     pub fn write_service<'a, Svc>(
@@ -103,7 +105,7 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
                 found: type_name::<Svc>(),
             })
         };
-        Ok(WriteGuard::new(base))
+        Ok(WriteGuard::wrap(base).ok().unwrap())
     }
 
     pub fn read<'a, Svc>(
@@ -156,7 +158,7 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
                 found: type_name::<Svc>(),
             })
         };
-        Ok(ReadGuard::new(base))
+        Ok(ReadGuard::wrap(base).ok().unwrap())
     }
 
     pub fn try_write_service<'a, Svc>(
@@ -173,7 +175,7 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
                 found: type_name::<Svc>(),
             })
         };
-        Ok(WriteGuard::new(base))
+        Ok(WriteGuard::wrap(base).ok().unwrap())
     }
 
     pub fn try_read<'a, Svc>(

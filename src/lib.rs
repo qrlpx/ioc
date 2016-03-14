@@ -4,14 +4,12 @@ extern crate downcast;
 
 mod reflect;
 mod errors;
-mod guards;
 //mod factory;
 mod methods;
 mod container;
 
 pub use reflect::*;
 pub use errors::*;
-pub use guards::*;
 pub use methods::*;
 //pub use factory::*;
 pub use container::*;
