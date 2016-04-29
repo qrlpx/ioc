@@ -10,12 +10,12 @@ use std::any::Any;
 
 // ++++++++++++++++++++ Method ++++++++++++++++++++
 
-pub trait Method<'a, Key, SvcBase: ?Sized>: Sized + Any
+pub trait Method<'a, Key, SvcBase: ?Sized>: Any
     where Key: reflect::Key, SvcBase: Any
 {
     type Ret: 'a;
-    fn resolve(self, ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>>;
-    fn try_resolve(self, ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>>;
+    fn resolve_unprotected(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>>;
+    fn try_resolve_unprotected(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>>;
 }
 
 // ++++++++++++++++++++ dummy ++++++++++++++++++++
@@ -25,10 +25,10 @@ impl<'a, Key, SvcBase: ?Sized> Method<'a, Key, SvcBase> for ()
 {
     type Ret = ();
 
-    fn resolve(self, _: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+    fn resolve_unprotected(_: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
         Ok(())
     }
-    fn try_resolve(self, _: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+    fn try_resolve_unprotected(_: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
         Ok(())
     }
 }
@@ -37,10 +37,6 @@ impl<'a, Key, SvcBase: ?Sized> Method<'a, Key, SvcBase> for ()
 
 pub struct Read<Svc>(PhantomData<fn(Svc)>);
 
-impl<Svc> Default for Read<Svc> {
-    fn default() -> Self { Read(PhantomData) }
-}
-
 impl<'a, Key, SvcBase: ?Sized, Svc> Method<'a, Key, SvcBase> for Read<Svc>
 where 
     Key: reflect::Key,
@@ -48,10 +44,10 @@ where
     SvcBase: Downcast<Svc>,
 {
     type Ret = ReadGuard<'a, Svc, SvcBase>;
-    fn resolve(self, ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+    fn resolve_unprotected(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
         ioc.read::<Svc>()
     }
-    fn try_resolve(self, ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+    fn try_resolve_unprotected(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
         ioc.try_read::<Svc>()
     }
 }
@@ -65,12 +61,12 @@ macro_rules! multi_read {
             $(SvcBase: Downcast<$params>),+
         {
             type Ret = ($(<Read<$params> as Method<'a, Key, SvcBase>>::Ret,)+);
-            fn resolve(self, ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+            fn resolve_unprotected(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
                 Ok((
                     $(try!{ioc.read::<$params>()},)+
                 ))
             }
-            fn try_resolve(self, ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+            fn try_resolve_unprotected(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
                 Ok((
                     $(try!{ioc.try_read::<$params>()},)+
                 ))
@@ -94,17 +90,13 @@ multi_read!{
     {A B C D E F G H J K L M}
     {A B C D E F G H J K L M N}
     {A B C D E F G H J K L M N O}
-    {A B C D E F G H J K L M N O P}
-    {A B C D E F G H J K L M N O P Q}
+    //{A B C D E F G H J K L M N O P}
+    //{A B C D E F G H J K L M N O P Q}
 }
 
 // ++++++++++++++++++++ Write ++++++++++++++++++++
 
 pub struct Write<Svc>(PhantomData<fn(Svc)>);
-
-impl<Svc> Default for Write<Svc> {
-    fn default() -> Self { Write(PhantomData) }
-}
 
 impl<'a, Key, SvcBase: ?Sized, Svc> Method<'a, Key, SvcBase> for Write<Svc>
 where 
@@ -113,10 +105,10 @@ where
     SvcBase: Downcast<Svc>,
 {
     type Ret = WriteGuard<'a, Svc, SvcBase>;
-    fn resolve(self, ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+    fn resolve_unprotected(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
         ioc.write::<Svc>()
     }
-    fn try_resolve(self, ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+    fn try_resolve_unprotected(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
         ioc.try_write::<Svc>()
     }
 }
@@ -130,12 +122,12 @@ macro_rules! multi_write {
             $(SvcBase: Downcast<$params>),+
         {
             type Ret = ($(<Write<$params> as Method<'a, Key, SvcBase>>::Ret,)+);
-            fn resolve(self, ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+            fn resolve_unprotected(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
                 Ok((
                     $(try!{ioc.write::<$params>()},)+
                 ))
             }
-            fn try_resolve(self, ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+            fn try_resolve_unprotected(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
                 Ok((
                     $(try!{ioc.try_write::<$params>()},)+
                 ))
@@ -176,7 +168,7 @@ where
     Cont::ServiceBase: Downcast<Obj::Factory>,
 {
     type Ret = Obj;
-    fn resolve(self, ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+    fn resolve_unprotected(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
         ioc.create::<Obj>()
     }
 }
@@ -191,7 +183,7 @@ macro_rules! multi_create {
             $(Cont::ServiceBase: Downcast<$params::Factory>),+
         {
             type Ret = ($(<Create<$params> as Method<'a, Cont>>::Ret,)+);
-            fn resolve(self, ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
+            fn resolve_unprotected(ioc: &'a Cont) -> Result<Self::Ret, Error<'a, Cont::Key>> {
                 Ok((
                     $(try!{ioc.create::<$params>()},)+
                 ))
@@ -216,14 +208,14 @@ macro_rules! multi_methods {
             SvcBase: Any,
         {
             type Ret = ($($params::Ret,)+);
-            fn resolve(self, ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+            fn resolve_unprotected(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
                 Ok((
-                    $(try!{e![self.$idx.resolve(ioc)]},)+
+                    $(try!{e![$params::resolve_unprotected(ioc)]},)+
                 ))
             }
-            fn try_resolve(self, ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+            fn try_resolve_unprotected(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
                 Ok((
-                    $(try!{e![self.$idx.try_resolve(ioc)]},)+
+                    $(try!{e![$params::try_resolve_unprotected(ioc)]},)+
                 ))
             }
         }

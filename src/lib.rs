@@ -1,6 +1,5 @@
 #[macro_use] 
 extern crate downcast;
-//extern crate shared_mutex;
 
 mod reflect;
 mod errors;

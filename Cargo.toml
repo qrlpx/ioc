@@ -1,6 +1,6 @@
 [package]
 name = "ioc"
-version = "0.5.4"
+version = "0.6.0"
 authors = ["qrlpx <>"]
 
 repository = "https://github.com/qrlpx/ioc"
@@ -10,5 +10,4 @@ license = "CC0-1.0"
 
 [dependencies]
 downcast = "^0.6"
-#shared-mutex = "^0.3"
 

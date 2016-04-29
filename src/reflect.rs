@@ -1,10 +1,10 @@
 use std::any::Any;
 use std::fmt::Debug;
 
-pub trait Key: Debug + Clone + Ord + Any {}
+pub trait Key: Debug + Clone + Ord + Any + Send + Sync {}
 
 impl<T> Key for T
-    where T: Debug + Clone + Ord + Any
+    where T: Debug + Clone + Ord + Any + Send + Sync
 {}
 
 pub trait Service: Any + Sized {

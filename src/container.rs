@@ -3,11 +3,10 @@ use methods::Method;
 use reflect;
 
 use downcast::{self, Downcast};
-//use shared_mutex::{SharedMutex, SharedMutexReadGuard, SharedMutexWriteGuard};
 
 use std::any::Any;
 use std::collections::BTreeMap;
-use std::sync::{TryLockError, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{TryLockError, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 fn type_name<T: Any>() -> &'static str {
     "NOT IMPLEMENTED"
@@ -21,6 +20,7 @@ pub type WriteGuard<'a, T, Base> = downcast::Guard<T, RwLockWriteGuard<'a, Box<B
 
 pub struct Container<Key, SvcBase: ?Sized> {
     services: BTreeMap<Key, RwLock<Box<SvcBase>>>,
+    deadlock_protection: Mutex<()>,
 }
 
 impl<Key, SvcBase: ?Sized> Container<Key, SvcBase> 
@@ -28,7 +28,7 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
 {
     #[doc(hidden)]
     pub fn new() -> Self {
-        Container{ services: BTreeMap::new() }
+        Container{ services: BTreeMap::new(), deadlock_protection: Mutex::new(()) }
     }
 
     #[doc(hidden)]
@@ -40,10 +40,9 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
     #[doc(hidden)]
     pub fn register<Svc>(&mut self, svc: Svc) -> &mut Self
     where
-        Svc: reflect::Service<Key = Key>,
-        Box<Svc>: Into<Box<SvcBase>>,
+        Svc: reflect::Service<Key = Key> + Into<Box<SvcBase>>,
     {
-        self.register_service(Svc::key().clone(), Box::new(svc).into())
+        self.register_service(Svc::key().clone(), svc.into())
     }
 
     pub fn services(&self) -> &BTreeMap<Key, RwLock<Box<SvcBase>>> {
@@ -194,15 +193,17 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
         self.try_write_service(Svc::key())
     }
 
-    pub fn resolve<'a, M>(&'a self, method: M) -> Result<M::Ret, Error<Key>>
+    pub fn resolve<'a, M>(&'a self) -> Result<M::Ret, Error<Key>>
         where M: Method<'a, Key, SvcBase>
     {
-        method.resolve(self)
+        let _ = self.deadlock_protection.lock();
+        M::resolve_unprotected(self)
     }
-    pub fn try_resolve<'a, M>(&'a self, method: M) -> Result<M::Ret, Error<Key>>
+    pub fn try_resolve<'a, M>(&'a self) -> Result<M::Ret, Error<Key>>
         where M: Method<'a, Key, SvcBase>
     {
-        method.try_resolve(self)
+        let _ = self.deadlock_protection.lock();
+        M::try_resolve_unprotected(self)
     }
 }
 
@@ -228,8 +229,7 @@ impl<Key, SvcBase: ?Sized> ContainerBuilder<Key, SvcBase>
     /// HKT or a `Coercible`-trait (to name two solutions).
     pub fn register<Svc>(&mut self, svc: Svc) -> &mut Self
     where
-        Svc: reflect::Service<Key = Key>,
-        Box<Svc>: Into<Box<SvcBase>>,
+        Svc: reflect::Service<Key = Key> + Into<Box<SvcBase>>,
     {
         self.cont.register::<Svc>(svc);
         self
