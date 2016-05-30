@@ -15,8 +15,8 @@ fn type_name<T: Any>() -> &'static str {
 
 // ++++++++++++++++++++ Container ++++++++++++++++++++
 
-pub type ReadGuard<'a, T, Base> = downcast::Guard<T, RwLockReadGuard<'a, Box<Base>>>;
-pub type WriteGuard<'a, T, Base> = downcast::Guard<T, RwLockWriteGuard<'a, Box<Base>>>;
+pub type ReadGuard<'a, T, Base: ?Sized> = downcast::Guard<T, RwLockReadGuard<'a, Box<Base>>>;
+pub type WriteGuard<'a, T, Base: ?Sized> = downcast::Guard<T, RwLockWriteGuard<'a, Box<Base>>>;
 
 pub struct Container<Key, SvcBase: ?Sized> {
     services: BTreeMap<Key, RwLock<Box<SvcBase>>>,
