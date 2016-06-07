@@ -45,6 +45,14 @@ impl<Key, SvcBase: ?Sized> Container<Key, SvcBase>
         self.register_service(Svc::key().clone(), svc.into())
     }
 
+    #[doc(hidden)]
+    pub fn register_default<Svc>(&mut self) -> &mut Self
+    where
+        Svc: Default + reflect::Service<Key = Key> + Into<Box<SvcBase>>,
+    {
+        self.register(Svc::default())
+    }
+
     pub fn services(&self) -> &BTreeMap<Key, RwLock<Box<SvcBase>>> {
         &self.services
     }
@@ -232,6 +240,14 @@ impl<Key, SvcBase: ?Sized> ContainerBuilder<Key, SvcBase>
         Svc: reflect::Service<Key = Key> + Into<Box<SvcBase>>,
     {
         self.cont.register::<Svc>(svc);
+        self
+    }
+
+    pub fn register_default<Svc>(&mut self) -> &mut Self
+    where
+        Svc: Default + reflect::Service<Key = Key> + Into<Box<SvcBase>>,
+    {
+        self.cont.register_default::<Svc>();
         self
     }
 
