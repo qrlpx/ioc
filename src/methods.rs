@@ -18,24 +18,30 @@ pub trait Method<'a, Key, SvcBase: ?Sized>: Any
     fn try_resolve_unprotected(ioc: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>>;
 }
 
-// ++++++++++++++++++++ dummy ++++++++++++++++++++
+macro_rules! impl_nil {
+    ($nil_ty:ty) => {
+        impl<'a, Key, SvcBase: ?Sized> Method<'a, Key, SvcBase> for $nil_ty
+            where Key: reflect::Key, SvcBase: Any
+        {
+            type Ret = ();
 
-impl<'a, Key, SvcBase: ?Sized> Method<'a, Key, SvcBase> for ()
-    where Key: reflect::Key, SvcBase: Any
-{
-    type Ret = ();
-
-    fn resolve_unprotected(_: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
-        Ok(())
-    }
-    fn try_resolve_unprotected(_: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
-        Ok(())
+            fn resolve_unprotected(_: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+                Ok(())
+            }
+            fn try_resolve_unprotected(_: &'a Container<Key, SvcBase>) -> Result<Self::Ret, Error<'a, Key>> {
+                Ok(())
+            }
+        }
     }
 }
+
+impl_nil!(());
 
 // ++++++++++++++++++++ Read ++++++++++++++++++++
 
 pub struct Read<Svc>(PhantomData<fn(Svc)>);
+
+impl_nil!(Read<()>);
 
 impl<'a, Key, SvcBase: ?Sized, Svc> Method<'a, Key, SvcBase> for Read<Svc>
 where 
@@ -97,6 +103,8 @@ multi_read!{
 // ++++++++++++++++++++ Write ++++++++++++++++++++
 
 pub struct Write<Svc>(PhantomData<fn(Svc)>);
+
+impl_nil!(Write<()>);
 
 impl<'a, Key, SvcBase: ?Sized, Svc> Method<'a, Key, SvcBase> for Write<Svc>
 where 
